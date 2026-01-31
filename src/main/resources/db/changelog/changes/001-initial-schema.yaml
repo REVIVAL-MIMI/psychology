@@ -1,0 +1,168 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1
+      author: psychology
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: phone
+                  type: VARCHAR(20)
+                  constraints:
+                    unique: true
+                    nullable: false
+              - column:
+                  name: role
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+        - createTable:
+            tableName: psychologists
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    foreignKeyName: fk_psychologist_user
+                    references: users(id)
+              - column:
+                  name: full_name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: email
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: education
+                  type: TEXT
+              - column:
+                  name: specialization
+                  type: VARCHAR(200)
+              - column:
+                  name: description
+                  type: TEXT
+              - column:
+                  name: photo_url
+                  type: VARCHAR(500)
+              - column:
+                  name: verified
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+              - column:
+                  name: verified_at
+                  type: TIMESTAMP
+
+        - createTable:
+            tableName: clients
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    foreignKeyName: fk_client_user
+                    references: users(id)
+              - column:
+                  name: full_name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: age
+                  type: INTEGER
+              - column:
+                  name: photo_url
+                  type: VARCHAR(500)
+              - column:
+                  name: psychologist_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_client_psychologist
+                    references: psychologists(id)
+              - column:
+                  name: linked_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+        - createTable:
+            tableName: invites
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: token
+                  type: VARCHAR(100)
+                  constraints:
+                    unique: true
+                    nullable: false
+              - column:
+                  name: psychologist_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_invite_psychologist
+                    references: psychologists(id)
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: expires_at
+                  type: TIMESTAMP
+              - column:
+                  name: used
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+              - column:
+                  name: used_at
+                  type: TIMESTAMP
+
+        - createIndex:
+            tableName: users
+            columns:
+              - column:
+                  name: phone
+            indexName: idx_users_phone
+
+        - createIndex:
+            tableName: psychologists
+            columns:
+              - column:
+                  name: email
+            indexName: idx_psychologists_email
+
+        - createIndex:
+            tableName: invites
+            columns:
+              - column:
+                  name: token
+            indexName: idx_invites_token
