@@ -1,0 +1,19 @@
+#!/bin/bash
+
+echo "=== ПРОСТОЙ ТЕСТ ==="
+
+# 1. Тестируем простой эндпоинт
+echo -e "\n1. Тестируем простой эндпоинт:"
+curl -X GET http://localhost:8080/api/v1/test/simple
+
+# 2. Проверяем психологов
+echo -e "\n\n2. Проверяем психологов:"
+curl -X GET http://localhost:8080/api/v1/debug/psychologists
+
+# 3. Создаем инвайт
+echo -e "\n\n3. Создаем инвайт:"
+TOKEN="eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzkxNjEyMzQ1NjAiLCJpYXQiOjE3Njk4ODIxMzksImV4cCI6MTc2OTg4MzkzOX0.zWbR8yh_ZVoQWnwfQO86VYYqIJJkkZCH1CTpHT_XYvE"
+curl -v -X POST http://localhost:8080/api/v1/invites \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -w "\n\nStatus: %{http_code}\n"

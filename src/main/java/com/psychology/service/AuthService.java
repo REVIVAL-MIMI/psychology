@@ -11,6 +11,7 @@ import com.psychology.repository.PsychologistRepository;
 import com.psychology.repository.UserRepository;
 import com.psychology.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,8 +19,10 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class AuthService {
     private final UserRepository userRepository;
@@ -44,12 +47,47 @@ public class AuthService {
         var user = userRepository.findByPhone(request.getPhone())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Проверяем верификацию для психологов
-        if (user instanceof Psychologist psychologist && !psychologist.isVerified()) {
-            throw new RuntimeException("Psychologist account is pending verification");
-        }
+        // ВАЖНО: Проверяем верификацию для психологов
+//        if (user instanceof Psychologist psychologist && !psychologist.isVerified()) {
+//            throw new RuntimeException("Psychologist account is pending verification by administrator");
+//        }
+
+        log.info("User authenticated: {} with role {}", user.getPhone(), user.getRole());
 
         // Генерируем токены
+        return generateAuthResponse(user);
+    }
+
+    public AuthResponse refreshToken(String refreshToken) {
+        // Проверяем, не в черном списке ли токен
+        if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(BLACKLIST_PREFIX + refreshToken))) {
+            throw new RuntimeException("Token is blacklisted");
+        }
+
+        // Валидируем refresh token
+        if (!jwtTokenProvider.validateToken(refreshToken)) {
+            throw new RuntimeException("Invalid refresh token");
+        }
+
+        String phone = jwtTokenProvider.extractUsername(refreshToken);
+        var user = userRepository.findByPhone(phone)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Проверяем, что этот refresh token еще валиден
+        String storedRefreshToken = stringRedisTemplate.opsForValue().get(REFRESH_PREFIX + phone);
+        if (!refreshToken.equals(storedRefreshToken)) {
+            throw new RuntimeException("Refresh token mismatch");
+        }
+
+        // Добавляем старый refresh token в blacklist
+        stringRedisTemplate.opsForValue().set(
+                BLACKLIST_PREFIX + refreshToken,
+                "blacklisted",
+                jwtTokenProvider.getRefreshTokenExpirationMs(), // Время жизни refresh token
+                TimeUnit.MILLISECONDS
+        );
+
+        // Генерируем новую пару токенов
         return generateAuthResponse(user);
     }
 
@@ -114,30 +152,6 @@ public class AuthService {
         return generateAuthResponse(client);
     }
 
-    public AuthResponse refreshToken(String refreshToken) {
-        // Проверяем, не в черном списке ли токен
-        if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(BLACKLIST_PREFIX + refreshToken))) {
-            throw new RuntimeException("Token is blacklisted");
-        }
-
-        // Валидируем refresh token
-        if (!jwtTokenProvider.validateToken(refreshToken)) {
-            throw new RuntimeException("Invalid refresh token");
-        }
-
-        String phone = jwtTokenProvider.extractUsername(refreshToken);
-        var user = userRepository.findByPhone(phone)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        // Проверяем, что этот refresh token еще валиден (храним в Redis)
-        String storedRefreshToken = stringRedisTemplate.opsForValue().get(REFRESH_PREFIX + phone);
-        if (!refreshToken.equals(storedRefreshToken)) {
-            throw new RuntimeException("Refresh token mismatch");
-        }
-
-        // Генерируем новую пару токенов
-        return generateAuthResponse(user);
-    }
 
     public void logout(String accessToken, String refreshToken) {
         // Добавляем токены в черный список

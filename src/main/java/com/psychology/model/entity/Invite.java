@@ -1,5 +1,6 @@
 package com.psychology.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -18,6 +19,7 @@ public class Invite {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "psychologist_id", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "clients", "invites"})
     private Psychologist psychologist;
 
     @Column(name = "created_at")
@@ -34,5 +36,18 @@ public class Invite {
     @PrePersist
     protected void setExpiration() {
         expiresAt = createdAt.plusDays(7);
+    }
+
+    // Переопределяем toString без LAZY полей
+    @Override
+    public String toString() {
+        return "Invite{" +
+                "id=" + id +
+                ", token='" + token + '\'' +
+                ", psychologistId=" + (psychologist != null ? psychologist.getId() : null) +
+                ", createdAt=" + createdAt +
+                ", expiresAt=" + expiresAt +
+                ", used=" + used +
+                '}';
     }
 }

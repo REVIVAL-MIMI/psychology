@@ -1,5 +1,6 @@
 package com.psychology.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -33,10 +34,24 @@ public class Psychologist extends User {
     private LocalDateTime verifiedAt;
 
     @OneToMany(mappedBy = "psychologist", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<Client> clients;
 
     @OneToMany(mappedBy = "psychologist", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<Invite> invites;
+
+    // ОСТАВЛЯЕМ: При toString() исключаем ленивые коллекции
+    @Override
+    public String toString() {
+        return "Psychologist{" +
+                "id=" + getId() +
+                ", phone='" + getPhone() + '\'' +
+                ", fullName='" + fullName + '\'' +
+                ", email='" + email + '\'' +
+                ", verified=" + verified +
+                '}';
+    }
 
     @PrePersist
     @PreUpdate

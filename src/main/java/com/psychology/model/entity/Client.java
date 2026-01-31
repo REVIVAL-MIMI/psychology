@@ -1,5 +1,7 @@
 package com.psychology.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -20,8 +22,19 @@ public class Client extends User {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "psychologist_id", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "clients", "invites"})
     private Psychologist psychologist;
 
     @Column(name = "linked_at")
     private LocalDateTime linkedAt;
+
+    @Override
+    public String toString() {
+        return "Client{" +
+                "id=" + getId() +
+                ", phone='" + getPhone() + '\'' +
+                ", fullName='" + fullName + '\'' +
+                ", age=" + age +
+                '}';
+    }
 }

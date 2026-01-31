@@ -1,0 +1,3074 @@
+package com.psychology.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
+
+@Configuration
+public class RedisConfig {
+
+    @Bean
+    public RedisTemplate<String, String> redisTemplate(RedisConnectionFactory connectionFactory) {
+        RedisTemplate<String, String> template = new RedisTemplate<>();
+        template.setConnectionFactory(connectionFactory);
+        template.setKeySerializer(new StringRedisSerializer());
+        template.setValueSerializer(new StringRedisSerializer());
+        return template;
+    }
+}package com.psychology.config;
+
+import com.psychology.security.JwtAuthenticationFilter;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
+import java.util.List;
+
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthFilter;
+    private final UserDetailsService userDetailsService;
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .authorizeHttpRequests(auth -> auth
+                        // Публичные эндпоинты
+                        .requestMatchers(
+                                "/api/v1/auth/**",           // Все аутентификационные эндпоинты
+                                "/api/v1/invites/validate/**", // Валидация инвайтов
+                                "/api/v1/test/**",           // Тестовые эндпоинты
+                                "/api/v1/debug/**",          // Отладочные эндпоинты
+                                "/error"                     // Обработка ошибок
+                        ).permitAll()
+                        // Защищенные эндпоинты по ролям
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/psychologist/**").hasRole("PSYCHOLOGIST")
+                        .requestMatchers("/api/v1/client/**").hasRole("CLIENT")
+                        // Все остальные запросы требуют аутентификации
+                        .anyRequest().authenticated()
+                )
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                .authenticationProvider(authenticationProvider())
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:8080"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
+    @Bean
+    public AuthenticationProvider authenticationProvider() {
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(userDetailsService);
+        authProvider.setPasswordEncoder(passwordEncoder());
+        return authProvider;
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
+}package com.psychology.controller;
+
+import com.psychology.model.entity.Psychologist;
+import com.psychology.service.AdminService;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/v1/admin")
+@RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
+public class AdminController {
+
+    private final AdminService adminService;
+
+    // Получить список психологов на верификацию
+    @GetMapping("/psychologists/pending")
+    public ResponseEntity<List<Psychologist>> getPendingPsychologists() {
+        List<Psychologist> pendingPsychologists = adminService.getPendingPsychologists();
+        return ResponseEntity.ok(pendingPsychologists);
+    }
+
+    // Получить список всех психологов
+    @GetMapping("/psychologists")
+    public ResponseEntity<List<Psychologist>> getAllPsychologists() {
+        List<Psychologist> psychologists = adminService.getAllPsychologists();
+        return ResponseEntity.ok(psychologists);
+    }
+
+    // Верифицировать психолога
+    @PostMapping("/psychologists/{psychologistId}/verify")
+    public ResponseEntity<?> verifyPsychologist(@PathVariable Long psychologistId) {
+        try {
+            Psychologist verified = adminService.verifyPsychologist(psychologistId);
+            return ResponseEntity.ok(verified);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse(e.getMessage()));
+        }
+    }
+
+    // Отклонить верификацию психолога
+    @PostMapping("/psychologists/{psychologistId}/reject")
+    public ResponseEntity<?> rejectPsychologist(@PathVariable Long psychologistId,
+                                                @RequestBody RejectRequest request) {
+        try {
+            adminService.rejectPsychologist(psychologistId, request.getReason());
+            return ResponseEntity.ok(new ApiResponse("Psychologist rejected successfully"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse(e.getMessage()));
+        }
+    }
+
+    // Получить статистику
+    @GetMapping("/stats")
+    public ResponseEntity<AdminStats> getStats() {
+        AdminStats stats = adminService.getAdminStats();
+        return ResponseEntity.ok(stats);
+    }
+
+    @Data
+    public static class RejectRequest {
+        private String reason;
+    }
+
+    @Data
+    public static class ApiResponse {
+        private String message;
+        private LocalDateTime timestamp;
+
+        public ApiResponse(String message) {
+            this.message = message;
+            this.timestamp = LocalDateTime.now();
+        }
+    }
+
+    @Data
+    public static class AdminStats {
+        private long totalPsychologists;
+        private long pendingPsychologists;
+        private long verifiedPsychologists;
+        private long totalClients;
+        private long activeSessionsToday;
+    }
+}package com.psychology.controller;
+
+import com.psychology.dto.AuthDTO.*;
+import com.psychology.service.AuthService;
+import com.psychology.service.OTPService;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/v1/auth")
+@RequiredArgsConstructor
+public class AuthController {
+    private final AuthService authService;
+    private final OTPService otpService;
+
+    @PostMapping("/send-otp")
+    public ResponseEntity<ApiResponse> sendOTP(@Valid @RequestBody PhoneRequest request) {
+        try {
+            String otp = otpService.generateOTP(request.getPhone());
+            return ResponseEntity.ok(new ApiResponse("OTP sent successfully"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(new ApiResponse(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<?> verifyOTP(@Valid @RequestBody VerifyOtpRequest request) {
+        try {
+            AuthResponse response = authService.verifyOTPAndAuthenticate(request);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/psychologist/register")
+    public ResponseEntity<?> registerPsychologist(
+            @Valid @RequestBody PsychologistRegisterRequest request) {
+        try {
+            // Проверяем OTP перед регистрацией
+            if (!otpService.verifyOTP(request.getPhone(), request.getOtp())) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new ApiResponse("Invalid OTP"));
+            }
+
+            AuthResponse response = authService.registerPsychologist(request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/client/register")
+    public ResponseEntity<?> registerClient(
+            @Valid @RequestBody ClientRegisterRequest request,
+            @RequestParam("inviteToken") String inviteToken,
+            HttpServletResponse httpServletResponse) {
+        try {
+            // Проверяем OTP перед регистрацией
+            if (!otpService.verifyOTP(request.getPhone(), request.getOtp())) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new ApiResponse("Invalid OTP"));
+            }
+
+            AuthResponse response = authService.registerClient(request, inviteToken);
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refreshToken(@CookieValue(value = "refreshToken", required = false) String refreshToken) {
+        if (refreshToken == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse("Refresh token is missing"));
+        }
+
+        try {
+            AuthResponse response = authService.refreshToken(refreshToken);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse> logout(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @CookieValue(value = "refreshToken", required = false) String refreshToken,
+            HttpServletResponse response) {
+
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String accessToken = authHeader.substring(7);
+            authService.logout(accessToken, refreshToken);
+        }
+
+        // Удаляем refresh token cookie
+        Cookie cookie = new Cookie("refreshToken", null);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(false);
+        cookie.setPath("/api/v1/auth/refresh");
+        cookie.setMaxAge(0);
+        response.addCookie(cookie);
+
+        return ResponseEntity.ok(new ApiResponse("Logged out successfully"));
+    }
+}package com.psychology.controller;
+
+public class ChatController {
+}
+package com.psychology.controller;
+
+import com.psychology.model.entity.Psychologist;
+import com.psychology.model.entity.Invite;
+import com.psychology.repository.PsychologistRepository;
+import com.psychology.repository.InviteRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/v1/debug")  // ✅ Путь начинается с /api/v1/debug
+@RequiredArgsConstructor
+@Slf4j
+public class DebugController {
+
+    private final PsychologistRepository psychologistRepository;
+    private final InviteRepository inviteRepository;
+
+    @GetMapping("/psychologists")
+    public ResponseEntity<List<Psychologist>> getAllPsychologists() {
+        log.info("Getting all psychologists");
+        List<Psychologist> psychologists = psychologistRepository.findAll();
+        return ResponseEntity.ok(psychologists);
+    }
+
+    @GetMapping("/invites")
+    public ResponseEntity<List<Invite>> getAllInvites() {
+        log.info("Getting all invites");
+        List<Invite> invites = inviteRepository.findAll();
+        return ResponseEntity.ok(invites);
+    }
+
+    @GetMapping("/health")
+    public ResponseEntity<String> health() {
+        return ResponseEntity.ok("OK");
+    }
+}package com.psychology.controller;
+
+import com.psychology.model.entity.Psychologist;
+import com.psychology.repository.PsychologistRepository;
+import com.psychology.service.InviteService;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/v1/invites")
+@RequiredArgsConstructor
+@Slf4j
+public class InviteController {
+    private final InviteService inviteService;
+    private final PsychologistRepository psychologistRepository;
+
+    @PostMapping
+    public ResponseEntity<?> createInvite(@AuthenticationPrincipal UserDetails userDetails) {
+        log.info("=== CREATE INVITE REQUEST ===");
+
+        try {
+            if (userDetails == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new ApiResponse("Not authenticated"));
+            }
+
+            String phone = userDetails.getUsername();
+            log.info("User phone from token: {}", phone);
+
+            // Ищем психолога по телефону
+            Psychologist psychologist = psychologistRepository.findByPhone(phone)
+                    .orElseThrow(() -> {
+                        log.error("Psychologist not found with phone: {}", phone);
+                        return new RuntimeException("Psychologist not found");
+                    });
+
+            log.info("Found psychologist: ID={}, Name={}",
+                    psychologist.getId(), psychologist.getFullName());
+
+            String token = inviteService.createInvite(psychologist);
+            String inviteLink = "http://localhost:3000/register?invite=" + token;
+
+            log.info("Invite created successfully");
+
+            return ResponseEntity.ok(new InviteResponse(token, inviteLink));
+
+        } catch (Exception e) {
+            log.error("Error creating invite: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse("Failed to create invite: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping
+    public ResponseEntity<?> getInvites(@AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            if (userDetails == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new ApiResponse("Not authenticated"));
+            }
+
+            String phone = userDetails.getUsername();
+            Psychologist psychologist = psychologistRepository.findByPhone(phone)
+                    .orElseThrow(() -> new RuntimeException("Psychologist not found"));
+
+            List<InviteDTO> invites = inviteService.getInvitesByPsychologist(psychologist.getId());
+            return ResponseEntity.ok(invites);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse("Failed to get invites: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/validate/{token}")
+    public ResponseEntity<?> validateInvite(@PathVariable String token) {
+        log.info("Validating invite token: {}", token);
+        try {
+            InviteValidationResponse response = inviteService.validateInvite(token);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Invalid invite token: {}", token, e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse("Invalid invite: " + e.getMessage()));
+        }
+    }
+
+    // DTO классы
+    @Data
+    public static class InviteResponse {
+        private String token;
+        private String inviteLink;
+
+        public InviteResponse(String token, String inviteLink) {
+            this.token = token;
+            this.inviteLink = inviteLink;
+        }
+    }
+
+    @Data
+    public static class InviteDTO {
+        private String token;
+        private String createdAt;
+        private String expiresAt;
+        private boolean used;
+
+        public InviteDTO(String token, String createdAt, String expiresAt, boolean used) {
+            this.token = token;
+            this.createdAt = createdAt;
+            this.expiresAt = expiresAt;
+            this.used = used;
+        }
+    }
+
+    @Data
+    public static class InviteValidationResponse {
+        private boolean valid;
+        private String psychologistName;
+        private String expiresAt;
+
+        public InviteValidationResponse(boolean valid, String psychologistName, String expiresAt) {
+            this.valid = valid;
+            this.psychologistName = psychologistName;
+            this.expiresAt = expiresAt;
+        }
+    }
+
+    @Data
+    public static class ApiResponse {
+        private String message;
+        private LocalDateTime timestamp;
+
+        public ApiResponse(String message) {
+            this.message = message;
+            this.timestamp = LocalDateTime.now();
+        }
+    }
+}package com.psychology.controller;
+
+import com.psychology.model.entity.Psychologist;
+import com.psychology.model.entity.Client;
+import com.psychology.service.ProfileService;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+
+@RestController
+@RequestMapping("/api/v1/profile")
+@RequiredArgsConstructor
+public class ProfileController {
+
+    private final ProfileService profileService;
+
+    // Получить профиль текущего пользователя
+    @GetMapping
+    public ResponseEntity<?> getCurrentProfile(@AuthenticationPrincipal Object user) {
+        if (user instanceof Psychologist) {
+            return ResponseEntity.ok(profileService.getPsychologistProfile((Psychologist) user));
+        } else if (user instanceof Client) {
+            return ResponseEntity.ok(profileService.getClientProfile((Client) user));
+        }
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ApiResponse("User type not recognized"));
+    }
+
+    // Обновить профиль психолога
+    @PutMapping("/psychologist")
+    public ResponseEntity<?> updatePsychologistProfile(
+            @AuthenticationPrincipal Psychologist psychologist,
+            @RequestBody PsychologistProfileUpdateRequest request) {
+        try {
+            Psychologist updated = profileService.updatePsychologistProfile(psychologist, request);
+            return ResponseEntity.ok(updated);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse(e.getMessage()));
+        }
+    }
+
+    // Обновить профиль клиента
+    @PutMapping("/client")
+    public ResponseEntity<?> updateClientProfile(
+            @AuthenticationPrincipal Client client,
+            @RequestBody ClientProfileUpdateRequest request) {
+        try {
+            Client updated = profileService.updateClientProfile(client, request);
+            return ResponseEntity.ok(updated);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse(e.getMessage()));
+        }
+    }
+
+    // DTO для обновления профиля психолога
+    @Data
+    public static class PsychologistProfileUpdateRequest {
+        private String fullName;
+        private String email;
+        private String education;
+        private String specialization;
+        private String description;
+        private String photoUrl;
+    }
+
+    // DTO для обновления профиля клиента
+    @Data
+    public static class ClientProfileUpdateRequest {
+        private String fullName;
+        private Integer age;
+        private String photoUrl;
+    }
+
+    @Data
+    public static class ApiResponse {
+        private String message;
+        private LocalDateTime timestamp;
+
+        public ApiResponse(String message) {
+            this.message = message;
+            this.timestamp = LocalDateTime.now();
+        }
+    }
+}package com.psychology.controller;
+
+import com.psychology.model.entity.Psychologist;
+import com.psychology.model.entity.Client;
+import com.psychology.model.entity.Session;
+import com.psychology.service.SessionService;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/v1/sessions")
+@RequiredArgsConstructor
+public class SessionController {
+
+    private final SessionService sessionService;
+
+    // Психолог создает сеанс
+    @PostMapping
+    public ResponseEntity<?> createSession(
+            @AuthenticationPrincipal Psychologist psychologist,
+            @RequestBody SessionService.SessionRequest request) {
+        try {
+            Session session = sessionService.createSession(psychologist, request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(session);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse(e.getMessage()));
+        }
+    }
+
+    // Психолог обновляет сеанс
+    @PutMapping("/{sessionId}")
+    public ResponseEntity<?> updateSession(
+            @AuthenticationPrincipal Psychologist psychologist,
+            @PathVariable Long sessionId,
+            @RequestBody SessionService.SessionUpdateRequest request) {
+        try {
+            Session session = sessionService.updateSession(sessionId, psychologist, request);
+            return ResponseEntity.ok(session);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse(e.getMessage()));
+        }
+    }
+
+    // Получить сеансы психолога
+    @GetMapping("/psychologist")
+    public ResponseEntity<List<Session>> getPsychologistSessions(
+            @AuthenticationPrincipal Psychologist psychologist,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
+        List<Session> sessions = sessionService.getPsychologistSessions(psychologist, from, to);
+        return ResponseEntity.ok(sessions);
+    }
+
+    // Получить сеансы клиента
+    @GetMapping("/client")
+    public ResponseEntity<List<Session>> getClientSessions(
+            @AuthenticationPrincipal Client client,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
+        List<Session> sessions = sessionService.getClientSessions(client, from, to);
+        return ResponseEntity.ok(sessions);
+    }
+
+    // Отменить сеанс
+    @PostMapping("/{sessionId}/cancel")
+    public ResponseEntity<?> cancelSession(
+            @AuthenticationPrincipal Object user,
+            @PathVariable Long sessionId) {
+        try {
+            String userType = getUserType(user);
+            Session session = sessionService.cancelSession(sessionId, userType, user);
+            return ResponseEntity.ok(session);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse(e.getMessage()));
+        }
+    }
+
+    private String getUserType(Object user) {
+        if (user instanceof Psychologist) {
+            return "PSYCHOLOGIST";
+        } else if (user instanceof Client) {
+            return "CLIENT";
+        }
+        throw new RuntimeException("Unknown user type");
+    }
+
+    @Data
+    public static class ApiResponse {
+        private String message;
+        private LocalDateTime timestamp;
+
+        public ApiResponse(String message) {
+            this.message = message;
+            this.timestamp = LocalDateTime.now();
+        }
+    }
+}package com.psychology.controller;
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/v1/test")
+public class TestController {
+
+    @GetMapping("/simple")
+    public String simpleTest() {
+        return "OK";
+    }
+
+    @GetMapping("/error-test")
+    public String errorTest() {
+        throw new RuntimeException("Test error");
+    }
+}package com.psychology.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import lombok.Data;
+
+public class AuthDTO {
+
+    @Data
+    public static class PhoneRequest {
+        @NotBlank(message = "Phone number is required")
+        @Pattern(regexp = "^\\+?[1-9]\\d{1,14}$", message = "Invalid phone number format")
+        private String phone;
+    }
+
+    @Data
+    public static class VerifyOtpRequest {
+        @NotBlank
+        private String phone;
+
+        @NotBlank
+        private String otp;
+    }
+
+    @Data
+    public static class AuthResponse {
+        private String accessToken;
+        private String refreshToken;
+        private Long userId;
+        private String userRole;
+        private String fullName;
+        private String phone;
+    }
+
+    @Data
+    public static class PsychologistRegisterRequest {
+        @NotBlank
+        private String phone;
+
+        @NotBlank
+        private String otp;
+
+        @NotBlank
+        private String fullName;
+
+        @NotBlank
+        @Email
+        private String email;
+
+        private String education;
+        private String specialization;
+        private String description;
+        private String photoUrl;
+    }
+
+    @Data
+    public static class ClientRegisterRequest {
+        @NotBlank
+        private String phone;
+
+        @NotBlank
+        private String otp;
+
+        @NotBlank
+        private String fullName;
+
+        @NotNull
+        private Integer age;
+
+        private String photoUrl;
+    }
+
+    @Data
+    public static class RefreshTokenRequest {
+        @NotBlank
+        private String refreshToken;
+    }
+
+    @Data
+    public static class ApiResponse {
+        private String message;
+        private Object data;
+
+        public ApiResponse(String message) {
+            this.message = message;
+        }
+
+        public ApiResponse(String message, Object data) {
+            this.message = message;
+            this.data = data;
+        }
+    }
+}package com.psychology.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class AuthResponse {
+    private String accessToken;
+    private String refreshToken;
+    private Long userId;
+    private String userRole;
+    private String fullName;
+    private String phone;
+}package com.psychology.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.Data;
+
+@Data
+public class ClientRegisterRequest {
+    @NotBlank
+    private String phone;
+
+    @NotBlank
+    private String otp;
+
+    @NotBlank
+    private String fullName;
+
+    @NotNull
+    private Integer age;
+
+    private String photoUrl;
+}package com.psychology.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import lombok.Data;
+
+@Data
+public class PhoneRequest {
+    @NotBlank(message = "Phone number is required")
+    @Pattern(regexp = "^\\+?[1-9]\\d{1,14}$", message = "Invalid phone number format")
+    private String phone;
+}package com.psychology.dto;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import lombok.Data;
+
+@Data
+public class PsychologistRegisterRequest {
+    @NotBlank
+    private String phone;
+
+    @NotBlank
+    private String otp;
+
+    @NotBlank
+    private String fullName;
+
+    @NotBlank
+    @Email
+    private String email;
+
+    private String education;
+    private String specialization;
+    private String description;
+    private String photoUrl;
+}package com.psychology.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import lombok.Data;
+
+@Data
+public class VerifyOtpRequest {
+    @NotBlank
+    private String phone;
+
+    @NotBlank
+    private String otp;
+}package com.psychology.exception;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.context.request.WebRequest;
+
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+
+@ControllerAdvice
+@Slf4j
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Object> handleAllExceptions(Exception ex, WebRequest request) {
+        log.error("Unhandled exception: ", ex);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
+        body.put("error", "Internal Server Error");
+        body.put("message", ex.getMessage());
+        body.put("path", request.getDescription(false));
+
+        // Для дебага - добавляем stack trace
+        if (ex.getStackTrace() != null && ex.getStackTrace().length > 0) {
+            StackTraceElement first = ex.getStackTrace()[0];
+            body.put("location", first.getClassName() + "." + first.getMethodName() + ":" + first.getLineNumber());
+        }
+
+        return new ResponseEntity<>(body, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+}package com.psychology.model.entity;
+
+import jakarta.persistence.*;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "clients")
+@Data
+@EqualsAndHashCode(callSuper = true)
+public class Client extends User {
+    @Column(name = "full_name", nullable = false)
+    private String fullName;
+
+    private Integer age;
+
+    private String photoUrl;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "psychologist_id", nullable = false)
+    private Psychologist psychologist;
+
+    @Column(name = "linked_at")
+    private LocalDateTime linkedAt;
+}package com.psychology.model.entity;
+
+import jakarta.persistence.*;
+import lombok.Data;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "invites")
+@Data
+public class Invite {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(unique = true, nullable = false)
+    private String token;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "psychologist_id", nullable = false)
+    private Psychologist psychologist;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(name = "expires_at")
+    private LocalDateTime expiresAt;
+
+    private boolean used = false;
+
+    @Column(name = "used_at")
+    private LocalDateTime usedAt;
+
+    @PrePersist
+    protected void setExpiration() {
+        expiresAt = createdAt.plusDays(7);
+    }
+}package com.psychology.model.entity;
+
+public class JournalEntry {
+}
+package com.psychology.model.entity;
+
+public class Message {
+}
+package com.psychology.model.entity;
+
+import jakarta.persistence.*;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Entity
+@Table(name = "psychologists")
+@Data
+@EqualsAndHashCode(callSuper = true)
+public class Psychologist extends User {
+    @Column(name = "full_name", nullable = false)
+    private String fullName;
+
+    @Column(nullable = false)
+    private String email;
+
+    private String education;
+
+    private String specialization;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    private String photoUrl;
+
+    private boolean verified = false;
+
+    @Column(name = "verified_at")
+    private LocalDateTime verifiedAt;
+
+    @OneToMany(mappedBy = "psychologist", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Client> clients;
+
+    @OneToMany(mappedBy = "psychologist", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Invite> invites;
+
+    @PrePersist
+    @PreUpdate
+    protected void onUpdate() {
+        if (verified && verifiedAt == null) {
+            verifiedAt = LocalDateTime.now();
+        }
+    }
+}package com.psychology.model.entity;
+
+public class Recommendation {
+}
+package com.psychology.model.entity;
+
+import jakarta.persistence.*;
+import lombok.Data;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "sessions")
+@Data
+public class Session {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "psychologist_id", nullable = false)
+    private Psychologist psychologist;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "client_id", nullable = false)
+    private Client client;
+
+    @Column(name = "scheduled_at", nullable = false)
+    private LocalDateTime scheduledAt;
+
+    @Column(name = "duration_minutes")
+    private Integer durationMinutes = 50;
+
+    private String description;
+
+    @Enumerated(EnumType.STRING)
+    private SessionStatus status = SessionStatus.SCHEDULED;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt = LocalDateTime.now();
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+
+    public enum SessionStatus {
+        SCHEDULED,      // Запланирован
+        CONFIRMED,      // Подтвержден клиентом
+        IN_PROGRESS,    // В процессе (для будущего)
+        COMPLETED,      // Завершен
+        CANCELLED,      // Отменен
+        RESCHEDULED     // Перенесен
+    }
+}package com.psychology.model.entity;
+
+import jakarta.persistence.*;
+import lombok.Data;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "users")
+@Inheritance(strategy = InheritanceType.JOINED)
+@Data
+public abstract class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(unique = true, nullable = false)
+    private String phone;
+
+    @Enumerated(EnumType.STRING)
+    private UserRole role;
+
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+}package com.psychology.model.entity;
+
+public enum UserRole {
+    ROLE_CLIENT,
+    ROLE_PSYCHOLOGIST,
+    ROLE_ADMIN
+}package com.psychology.repository;
+
+import com.psychology.model.entity.Client;
+import com.psychology.model.entity.Psychologist;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface ClientRepository extends JpaRepository<Client, Long> {
+    List<Client> findByPsychologist(Psychologist psychologist);
+    List<Client> findByPsychologistId(Long psychologistId);
+}package com.psychology.repository;
+
+import com.psychology.model.entity.Invite;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public interface InviteRepository extends JpaRepository<Invite, Long> {
+    Optional<Invite> findByToken(String token);
+    boolean existsByToken(String token);
+    List<Invite> findByPsychologistIdAndUsedFalse(Long psychologistId);
+}package com.psychology.repository;
+
+public class JournalEntryRepository {
+}
+package com.psychology.repository;
+
+public class MessageRepository {
+}
+package com.psychology.repository;
+
+import com.psychology.model.entity.Psychologist;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public interface PsychologistRepository extends JpaRepository<Psychologist, Long> {
+    List<Psychologist> findByVerified(boolean verified);
+
+    Optional<Psychologist> findByPhone(String phone);
+
+    default List<Psychologist> findByVerifiedFalse() {
+        return findByVerified(false);
+    }
+
+    default List<Psychologist> findByVerifiedTrue() {
+        return findByVerified(true);
+    }
+
+    @Query("SELECT COUNT(p) FROM Psychologist p WHERE p.verified = true")
+    long countByVerifiedTrue();
+
+    @Query("SELECT COUNT(p) FROM Psychologist p WHERE p.verified = false")
+    long countByVerifiedFalse();
+}package com.psychology.repository;
+
+public class RecommendationRepository {
+}
+package com.psychology.repository;
+
+import com.psychology.model.entity.Session;
+import com.psychology.model.entity.Psychologist;
+import com.psychology.model.entity.Client;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Repository
+public interface SessionRepository extends JpaRepository<Session, Long> {
+
+    List<Session> findByPsychologistIdOrderByScheduledAtDesc(Long psychologistId);
+
+    List<Session> findByClientIdOrderByScheduledAtDesc(Long clientId);
+
+    List<Session> findByPsychologistIdAndScheduledAtBetween(
+            Long psychologistId, LocalDateTime start, LocalDateTime end);
+
+    List<Session> findByClientIdAndScheduledAtBetween(
+            Long clientId, LocalDateTime start, LocalDateTime end);
+
+    List<Session> findByPsychologistIdAndStatus(Long psychologistId, Session.SessionStatus status);
+
+    List<Session> findByClientIdAndStatus(Long clientId, Session.SessionStatus status);
+
+    @Query("SELECT COUNT(s) FROM Session s WHERE s.status = :status AND s.scheduledAt BETWEEN :start AND :end")
+    long countByStatusAndDateTimeBetween(
+            @Param("status") String status,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end);
+
+    List<Session> findByScheduledAtBetween(LocalDateTime start, LocalDateTime end);
+}package com.psychology.repository;
+
+import com.psychology.model.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+
+    @Query("SELECT u FROM User u WHERE u.phone = :phone")
+    Optional<User> findByPhone(@Param("phone") String phone);
+
+    boolean existsByPhone(String phone);
+}package com.psychology.security;
+
+import com.psychology.model.entity.User;
+import com.psychology.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+
+import java.util.Collections;
+
+@Service
+@RequiredArgsConstructor
+public class CustomUserDetailsService implements UserDetailsService {
+    private final UserRepository userRepository;
+
+    @Override
+    public UserDetails loadUserByUsername(String phone) throws UsernameNotFoundException {
+        User user = userRepository.findByPhone(phone)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with phone: " + phone));
+
+        return new org.springframework.security.core.userdetails.User(
+                user.getPhone(),
+                "", // Пароль не используется в OTP системе
+                Collections.singletonList(new SimpleGrantedAuthority(user.getRole().name()))
+        );
+    }
+}package com.psychology.security;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
+    private final JwtTokenProvider jwtTokenProvider;
+    private final UserDetailsService userDetailsService;
+    // private final UserRepository userRepository; // Временно убираем
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
+        try {
+            final String authHeader = request.getHeader("Authorization");
+            final String requestUri = request.getRequestURI();
+
+            log.debug("Processing request: {} {}", request.getMethod(), requestUri);
+
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            final String jwt = authHeader.substring(7);
+            final String username = jwtTokenProvider.extractUsername(jwt);
+
+            log.debug("Extracted username: {}", username);
+
+            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
+
+                if (jwtTokenProvider.validateToken(jwt, userDetails)) {
+                    log.debug("Token is valid for user: {}", username);
+
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                            userDetails,  // Временно оставляем UserDetails
+                            null,
+                            userDetails.getAuthorities()
+                    );
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+
+                    log.debug("Authentication set successfully");
+                } else {
+                    log.warn("Token validation failed for user: {}", username);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error in JWT filter: ", e);
+            // Не выбрасываем исключение, чтобы запрос мог продолжиться
+        }
+
+        filterChain.doFilter(request, response);
+    }
+}package com.psychology.security;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Component;
+
+import javax.crypto.SecretKey;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Function;
+
+@Component
+public class JwtTokenProvider {
+    @Value("${jwt.secret}")
+    private String jwtSecret;
+
+    @Value("${jwt.access-expiration}")
+    private long accessExpiration;
+
+    @Value("${jwt.refresh-expiration}")
+    private long refreshExpiration;
+
+    private SecretKey getSigningKey() {
+        return Keys.hmacShaKeyFor(jwtSecret.getBytes());
+    }
+
+    public String generateAccessToken(UserDetails userDetails) {
+        Map<String, Object> claims = new HashMap<>();
+        return buildToken(claims, userDetails.getUsername(), accessExpiration);
+    }
+
+    public String generateRefreshToken(UserDetails userDetails) {
+        Map<String, Object> claims = new HashMap<>();
+        return buildToken(claims, userDetails.getUsername(), refreshExpiration);
+    }
+
+    private String buildToken(Map<String, Object> claims, String subject, long expiration) {
+        return Jwts.builder()
+                .setClaims(claims)
+                .setSubject(subject)
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + expiration))
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    public String extractUsername(String token) {
+        return extractClaim(token, Claims::getSubject);
+    }
+
+    public Date extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration);
+    }
+
+    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+        final Claims claims = extractAllClaims(token);
+        return claimsResolver.apply(claims);
+    }
+
+    private Claims extractAllClaims(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+    }
+
+    public Boolean validateToken(String token) {
+        try {
+            Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public Boolean validateToken(String token, UserDetails userDetails) {
+        final String username = extractUsername(token);
+        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+    }
+
+    private Boolean isTokenExpired(String token) {
+        return extractExpiration(token).before(new Date());
+    }
+}package com.psychology.service;
+
+import com.psychology.controller.AdminController;
+import com.psychology.model.entity.Psychologist;
+import com.psychology.repository.PsychologistRepository;
+import com.psychology.repository.ClientRepository;
+import com.psychology.repository.SessionRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class AdminService {
+
+    private final PsychologistRepository psychologistRepository;
+    private final ClientRepository clientRepository;
+    private final SessionRepository sessionRepository;
+
+    public List<Psychologist> getPendingPsychologists() {
+        return psychologistRepository.findByVerifiedFalse();
+    }
+
+    public List<Psychologist> getAllPsychologists() {
+        return psychologistRepository.findAll();
+    }
+
+    @Transactional
+    public Psychologist verifyPsychologist(Long psychologistId) {
+        Psychologist psychologist = psychologistRepository.findById(psychologistId)
+                .orElseThrow(() -> new RuntimeException("Psychologist not found"));
+
+        if (psychologist.isVerified()) {
+            throw new RuntimeException("Psychologist is already verified");
+        }
+
+        psychologist.setVerified(true);
+        psychologist.setVerifiedAt(LocalDateTime.now());
+
+        return psychologistRepository.save(psychologist);
+    }
+
+    @Transactional
+    public void rejectPsychologist(Long psychologistId, String reason) {
+        Psychologist psychologist = psychologistRepository.findById(psychologistId)
+                .orElseThrow(() -> new RuntimeException("Psychologist not found"));
+
+        if (psychologist.isVerified()) {
+            throw new RuntimeException("Cannot reject already verified psychologist");
+        }
+
+        // Здесь можно добавить логику отправки email с причиной отказа
+        // или сохранить причину в базе данных
+
+        psychologistRepository.delete(psychologist);
+    }
+
+    public AdminController.AdminStats getAdminStats() {
+        AdminController.AdminStats stats = new AdminController.AdminStats();
+
+        stats.setTotalPsychologists(psychologistRepository.count());
+        stats.setPendingPsychologists(psychologistRepository.countByVerifiedFalse());
+        stats.setVerifiedPsychologists(psychologistRepository.countByVerifiedTrue());
+        stats.setTotalClients(clientRepository.count());
+
+        // Пример: активные сессии сегодня
+        LocalDateTime startOfDay = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
+        LocalDateTime endOfDay = LocalDateTime.now().withHour(23).withMinute(59).withSecond(59);
+        stats.setActiveSessionsToday(sessionRepository.countByStatusAndDateTimeBetween(
+                "SCHEDULED", startOfDay, endOfDay));
+
+        return stats;
+    }
+}package com.psychology.service;
+
+import com.psychology.dto.AuthDTO.*;
+import com.psychology.model.entity.Client;
+import com.psychology.model.entity.Invite;
+import com.psychology.model.entity.Psychologist;
+import com.psychology.model.entity.UserRole;
+import com.psychology.repository.ClientRepository;
+import com.psychology.repository.InviteRepository;
+import com.psychology.repository.PsychologistRepository;
+import com.psychology.repository.UserRepository;
+import com.psychology.security.JwtTokenProvider;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+@Service
+@Slf4j
+@RequiredArgsConstructor
+public class AuthService {
+    private final UserRepository userRepository;
+    private final PsychologistRepository psychologistRepository;
+    private final ClientRepository clientRepository;
+    private final InviteRepository inviteRepository;
+    private final OTPService otpService;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final PasswordEncoder passwordEncoder;
+    private final StringRedisTemplate stringRedisTemplate;
+
+    private static final String BLACKLIST_PREFIX = "blacklist:";
+    private static final String REFRESH_PREFIX = "refresh:";
+
+    public AuthResponse verifyOTPAndAuthenticate(VerifyOtpRequest request) {
+        // Проверяем OTP
+        if (!otpService.verifyOTP(request.getPhone(), request.getOtp())) {
+            throw new RuntimeException("Invalid OTP");
+        }
+
+        // Ищем пользователя
+        var user = userRepository.findByPhone(request.getPhone())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+//        // Проверяем верификацию для психологов
+//        if (user instanceof Psychologist psychologist && !psychologist.isVerified()) {
+//            throw new RuntimeException("Psychologist account is pending verification");
+//        }
+        log.info("User authenticated: {} with role {}", user.getPhone(), user.getRole());
+        // Генерируем токены
+        return generateAuthResponse(user);
+    }
+
+    public AuthResponse registerPsychologist(PsychologistRegisterRequest request) {
+        // Проверяем, не занят ли телефон
+        if (userRepository.existsByPhone(request.getPhone())) {
+            throw new RuntimeException("Phone already registered");
+        }
+
+        // Создаем психолога
+        Psychologist psychologist = new Psychologist();
+        psychologist.setPhone(request.getPhone());
+        psychologist.setFullName(request.getFullName());
+        psychologist.setEmail(request.getEmail());
+        psychologist.setEducation(request.getEducation());
+        psychologist.setSpecialization(request.getSpecialization());
+        psychologist.setDescription(request.getDescription());
+        psychologist.setPhotoUrl(request.getPhotoUrl());
+        psychologist.setRole(UserRole.ROLE_PSYCHOLOGIST);
+        psychologist.setVerified(false); // Требуется верификация админом
+
+        psychologistRepository.save(psychologist);
+
+        return generateAuthResponse(psychologist);
+    }
+
+    public AuthResponse registerClient(ClientRegisterRequest request, String inviteToken) {
+        // Проверяем инвайт
+        Invite invite = inviteRepository.findByToken(inviteToken)
+                .orElseThrow(() -> new RuntimeException("Invalid invite token"));
+
+        if (invite.isUsed()) {
+            throw new RuntimeException("Invite already used");
+        }
+
+        if (invite.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Invite expired");
+        }
+
+        // Проверяем, не занят ли телефон
+        if (userRepository.existsByPhone(request.getPhone())) {
+            throw new RuntimeException("Phone already registered");
+        }
+
+        // Создаем клиента
+        Client client = new Client();
+        client.setPhone(request.getPhone());
+        client.setFullName(request.getFullName());
+        client.setAge(request.getAge());
+        client.setPhotoUrl(request.getPhotoUrl());
+        client.setPsychologist(invite.getPsychologist());
+        client.setLinkedAt(LocalDateTime.now());
+        client.setRole(UserRole.ROLE_CLIENT);
+
+        clientRepository.save(client);
+
+        // Помечаем инвайт как использованный
+        invite.setUsed(true);
+        invite.setUsedAt(LocalDateTime.now());
+        inviteRepository.save(invite);
+
+        return generateAuthResponse(client);
+    }
+
+    public AuthResponse refreshToken(String refreshToken) {
+        // Проверяем, не в черном списке ли токен
+        if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(BLACKLIST_PREFIX + refreshToken))) {
+            throw new RuntimeException("Token is blacklisted");
+        }
+
+        // Валидируем refresh token
+        if (!jwtTokenProvider.validateToken(refreshToken)) {
+            throw new RuntimeException("Invalid refresh token");
+        }
+
+        String phone = jwtTokenProvider.extractUsername(refreshToken);
+        var user = userRepository.findByPhone(phone)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Проверяем, что этот refresh token еще валиден (храним в Redis)
+        String storedRefreshToken = stringRedisTemplate.opsForValue().get(REFRESH_PREFIX + phone);
+        if (!refreshToken.equals(storedRefreshToken)) {
+            throw new RuntimeException("Refresh token mismatch");
+        }
+
+        // Генерируем новую пару токенов
+        return generateAuthResponse(user);
+    }
+
+    public void logout(String accessToken, String refreshToken) {
+        // Добавляем токены в черный список
+        if (accessToken != null) {
+            // Добавляем access token в черный список на 30 минут
+            stringRedisTemplate.opsForValue().set(
+                    BLACKLIST_PREFIX + accessToken,
+                    "blacklisted",
+                    30, // 30 минут
+                    java.util.concurrent.TimeUnit.MINUTES
+            );
+        }
+
+        if (refreshToken != null) {
+            // Удаляем refresh token из валидных
+            String phone = jwtTokenProvider.extractUsername(refreshToken);
+            stringRedisTemplate.delete(REFRESH_PREFIX + phone);
+        }
+    }
+
+    private AuthResponse generateAuthResponse(com.psychology.model.entity.User user) {
+        // Создаем UserDetails для генерации токена
+        UserDetails userDetails = org.springframework.security.core.userdetails.User
+                .withUsername(user.getPhone())
+                .password("") // Пароль не используется
+                .roles(user.getRole().name().replace("ROLE_", ""))
+                .build();
+
+        String accessToken = jwtTokenProvider.generateAccessToken(userDetails);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(userDetails);
+
+        // Сохраняем refresh token в Redis
+        stringRedisTemplate.opsForValue().set(
+                REFRESH_PREFIX + user.getPhone(),
+                refreshToken,
+                7, // 7 дней
+                java.util.concurrent.TimeUnit.DAYS
+        );
+
+        AuthResponse response = new AuthResponse();
+        response.setAccessToken(accessToken);
+        response.setRefreshToken(refreshToken);
+        response.setUserId(user.getId());
+        response.setUserRole(user.getRole().name());
+        response.setFullName(getFullName(user));
+        response.setPhone(user.getPhone());
+
+        return response;
+    }
+
+    private String getFullName(com.psychology.model.entity.User user) {
+        if (user instanceof Psychologist) {
+            return ((Psychologist) user).getFullName();
+        } else if (user instanceof Client) {
+            return ((Client) user).getFullName();
+        }
+        return "";
+    }
+}package com.psychology.service;
+
+
+public class ChatService {
+
+}package com.psychology.service;
+
+import com.psychology.controller.InviteController.InviteDTO;
+import com.psychology.controller.InviteController.InviteValidationResponse;
+import com.psychology.model.entity.Invite;
+import com.psychology.model.entity.Psychologist;
+import com.psychology.repository.InviteRepository;
+import com.psychology.repository.PsychologistRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class InviteService {
+    private final InviteRepository inviteRepository;
+    private final PsychologistRepository psychologistRepository;
+
+    private static final int INVITE_TOKEN_LENGTH = 32;
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+
+    @Transactional
+    public String createInvite(Psychologist psychologist) {
+        log.info("Creating invite for psychologist ID: {}", psychologist.getId());
+
+        // ВАЖНО: Перезагружаем психолога из базы для гарантии, что это управляемый entity
+        Psychologist managedPsychologist = psychologistRepository.findById(psychologist.getId())
+                .orElseThrow(() -> {
+                    log.error("Psychologist not found with ID: {}", psychologist.getId());
+                    return new RuntimeException("Psychologist not found");
+                });
+
+        log.info("Loaded psychologist: ID={}, Name={}, Verified={}",
+                managedPsychologist.getId(),
+                managedPsychologist.getFullName(),
+                managedPsychologist.isVerified());
+
+        String token;
+        int attempts = 0;
+        do {
+            token = RandomStringUtils.randomAlphanumeric(INVITE_TOKEN_LENGTH);
+            attempts++;
+            if (attempts > 10) {
+                throw new RuntimeException("Failed to generate unique token after 10 attempts");
+            }
+        } while (inviteRepository.existsByToken(token));
+
+        Invite invite = new Invite();
+        invite.setToken(token);
+        invite.setPsychologist(managedPsychologist); // Используем управляемый entity
+        invite.setCreatedAt(LocalDateTime.now());
+        invite.setExpiresAt(LocalDateTime.now().plusDays(7));
+        invite.setUsed(false);
+
+        try {
+            inviteRepository.save(invite);
+            log.info("Invite created successfully. Token: {}, Psychologist ID: {}",
+                    token, managedPsychologist.getId());
+        } catch (Exception e) {
+            log.error("Error saving invite: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to save invite: " + e.getMessage());
+        }
+
+        return token;
+    }
+
+    public List<InviteDTO> getInvitesByPsychologist(Long psychologistId) {
+        log.info("Getting invites for psychologist ID: {}", psychologistId);
+
+        List<Invite> invites = inviteRepository.findByPsychologistIdAndUsedFalse(psychologistId);
+
+        return invites.stream()
+                .map(invite -> new InviteDTO(
+                        invite.getToken(),
+                        invite.getCreatedAt().format(FORMATTER),
+                        invite.getExpiresAt().format(FORMATTER),
+                        invite.isUsed()
+                ))
+                .collect(Collectors.toList());
+    }
+
+    public InviteValidationResponse validateInvite(String token) {
+        log.info("Validating invite token: {}", token);
+
+        Invite invite = inviteRepository.findByToken(token)
+                .orElseThrow(() -> {
+                    log.error("Invite not found for token: {}", token);
+                    return new RuntimeException("Invite not found");
+                });
+
+        boolean valid = !invite.isUsed() && invite.getExpiresAt().isAfter(LocalDateTime.now());
+        String psychologistName = invite.getPsychologist().getFullName();
+        String expiresAt = invite.getExpiresAt().format(FORMATTER);
+
+        log.info("Invite validation result: valid={}, psychologist={}", valid, psychologistName);
+
+        return new InviteValidationResponse(valid, psychologistName, expiresAt);
+    }
+}package com.psychology.service;
+
+public class NotificationService {
+}
+package com.psychology.service;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Service;
+
+import java.util.concurrent.TimeUnit;
+
+@Service
+@Slf4j
+@RequiredArgsConstructor
+public class OTPService {
+    private final StringRedisTemplate stringRedisTemplate;
+
+    private static final String OTP_PREFIX = "otp:";
+    private static final String OTP_ATTEMPTS_PREFIX = "otp_attempts:";
+    private static final String BLOCKED_PREFIX = "blocked:";
+    private static final String SEND_TIMEOUT_PREFIX = "otp_timeout:";
+
+    private static final int OTP_LENGTH = 6;
+    private static final int OTP_TTL_MINUTES = 5;
+    private static final int MAX_ATTEMPTS = 3;
+    private static final int BLOCK_DURATION_MINUTES = 60;
+    private static final int SEND_TIMEOUT_SECONDS = 60; // 1 minute
+
+    public String generateOTP(String phone) {
+        // Проверка блокировки
+        if (isBlocked(phone)) {
+            throw new RuntimeException("Phone is temporarily blocked");
+        }
+
+        // Проверка таймаута отправки
+        String timeoutKey = SEND_TIMEOUT_PREFIX + phone;
+        if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(timeoutKey))) {
+            throw new RuntimeException("Please wait before requesting new OTP");
+        }
+
+        // Генерация OTP
+        String otp = RandomStringUtils.randomNumeric(OTP_LENGTH);
+        String key = OTP_PREFIX + phone;
+
+        // Сохранение в Redis
+        stringRedisTemplate.opsForValue().set(
+                key,
+                otp,
+                OTP_TTL_MINUTES,
+                TimeUnit.MINUTES
+        );
+
+        // Установка таймаута на повторную отправку
+        stringRedisTemplate.opsForValue().set(
+                timeoutKey,
+                "1",
+                SEND_TIMEOUT_SECONDS,
+                TimeUnit.SECONDS
+        );
+
+        // Логирование OTP (в продакшене будет отправка SMS)
+        log.info("OTP for {}: {}", phone, otp);
+
+        return otp;
+    }
+
+    public boolean verifyOTP(String phone, String otp) {
+        String key = OTP_PREFIX + phone;
+        String storedOtp = stringRedisTemplate.opsForValue().get(key);
+
+        if (storedOtp == null) {
+            return false;
+        }
+
+        boolean verified = storedOtp.equals(otp);
+
+        if (verified) {
+            // Удаляем OTP после успешной проверки
+            stringRedisTemplate.delete(key);
+            resetAttempts(phone);
+        } else {
+            incrementAttempts(phone);
+        }
+
+        return verified;
+    }
+
+    private void incrementAttempts(String phone) {
+        String key = OTP_ATTEMPTS_PREFIX + phone;
+        Long attempts = stringRedisTemplate.opsForValue().increment(key);
+
+        if (attempts == 1) {
+            stringRedisTemplate.expire(key, 1, TimeUnit.HOURS);
+        }
+
+        if (attempts >= MAX_ATTEMPTS) {
+            blockPhone(phone);
+            throw new RuntimeException("Too many OTP attempts");
+        }
+    }
+
+    private void resetAttempts(String phone) {
+        String key = OTP_ATTEMPTS_PREFIX + phone;
+        stringRedisTemplate.delete(key);
+    }
+
+    private boolean isBlocked(String phone) {
+        String key = BLOCKED_PREFIX + phone;
+        return Boolean.TRUE.equals(stringRedisTemplate.hasKey(key));
+    }
+
+    private void blockPhone(String phone) {
+        String key = BLOCKED_PREFIX + phone;
+        stringRedisTemplate.opsForValue().set(key, "blocked", BLOCK_DURATION_MINUTES, TimeUnit.MINUTES);
+    }
+}package com.psychology.service;
+
+import com.psychology.controller.ProfileController;
+import com.psychology.model.entity.Psychologist;
+import com.psychology.model.entity.Client;
+import com.psychology.repository.PsychologistRepository;
+import com.psychology.repository.ClientRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class ProfileService {
+
+    private final PsychologistRepository psychologistRepository;
+    private final ClientRepository clientRepository;
+
+    public Psychologist getPsychologistProfile(Psychologist psychologist) {
+        return psychologistRepository.findById(psychologist.getId())
+                .orElseThrow(() -> new RuntimeException("Psychologist not found"));
+    }
+
+    public Client getClientProfile(Client client) {
+        return clientRepository.findById(client.getId())
+                .orElseThrow(() -> new RuntimeException("Client not found"));
+    }
+
+    @Transactional
+    public Psychologist updatePsychologistProfile(Psychologist psychologist,
+                                                  ProfileController.PsychologistProfileUpdateRequest request) {
+        Psychologist existingPsychologist = psychologistRepository.findById(psychologist.getId())
+                .orElseThrow(() -> new RuntimeException("Psychologist not found"));
+
+        if (request.getFullName() != null && !request.getFullName().trim().isEmpty()) {
+            existingPsychologist.setFullName(request.getFullName());
+        }
+        if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
+            existingPsychologist.setEmail(request.getEmail());
+        }
+        if (request.getEducation() != null) {
+            existingPsychologist.setEducation(request.getEducation());
+        }
+        if (request.getSpecialization() != null) {
+            existingPsychologist.setSpecialization(request.getSpecialization());
+        }
+        if (request.getDescription() != null) {
+            existingPsychologist.setDescription(request.getDescription());
+        }
+        if (request.getPhotoUrl() != null) {
+            existingPsychologist.setPhotoUrl(request.getPhotoUrl());
+        }
+
+        return psychologistRepository.save(existingPsychologist);
+    }
+
+    @Transactional
+    public Client updateClientProfile(Client client,
+                                      ProfileController.ClientProfileUpdateRequest request) {
+        Client existingClient = clientRepository.findById(client.getId())
+                .orElseThrow(() -> new RuntimeException("Client not found"));
+
+        if (request.getFullName() != null && !request.getFullName().trim().isEmpty()) {
+            existingClient.setFullName(request.getFullName());
+        }
+        if (request.getAge() != null) {
+            if (request.getAge() < 0 || request.getAge() > 120) {
+                throw new RuntimeException("Invalid age");
+            }
+            existingClient.setAge(request.getAge());
+        }
+        if (request.getPhotoUrl() != null) {
+            existingClient.setPhotoUrl(request.getPhotoUrl());
+        }
+
+        return clientRepository.save(existingClient);
+    }
+}package com.psychology.service;
+
+import com.psychology.model.entity.Session;
+import com.psychology.model.entity.Psychologist;
+import com.psychology.model.entity.Client;
+import com.psychology.repository.SessionRepository;
+import com.psychology.repository.ClientRepository;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class SessionService {
+
+    private final SessionRepository sessionRepository;
+    private final ClientRepository clientRepository;
+
+    @Transactional
+    public Session createSession(Psychologist psychologist, SessionRequest request) {
+        Client client = clientRepository.findById(request.getClientId())
+                .orElseThrow(() -> new RuntimeException("Client not found"));
+
+        // Проверяем, что клиент принадлежит психологу
+        if (!client.getPsychologist().getId().equals(psychologist.getId())) {
+            throw new RuntimeException("Client does not belong to this psychologist");
+        }
+
+        // Проверяем, что время сеанса в будущем
+        if (request.getScheduledAt().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Session time must be in the future");
+        }
+
+        Session session = new Session();
+        session.setPsychologist(psychologist);
+        session.setClient(client);
+        session.setScheduledAt(request.getScheduledAt());
+        session.setDurationMinutes(request.getDurationMinutes());
+        session.setDescription(request.getDescription());
+        session.setStatus(Session.SessionStatus.SCHEDULED);
+
+        return sessionRepository.save(session);
+    }
+
+    @Transactional
+    public Session updateSession(Long sessionId, Psychologist psychologist, SessionUpdateRequest request) {
+        Session session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session not found"));
+
+        // Проверяем, что сеанс принадлежит психологу
+        if (!session.getPsychologist().getId().equals(psychologist.getId())) {
+            throw new RuntimeException("Session does not belong to this psychologist");
+        }
+
+        if (request.getScheduledAt() != null) {
+            // Проверяем, что время сеанса в будущем
+            if (request.getScheduledAt().isBefore(LocalDateTime.now())) {
+                throw new RuntimeException("Session time must be in the future");
+            }
+            session.setScheduledAt(request.getScheduledAt());
+        }
+        if (request.getDurationMinutes() != null) {
+            session.setDurationMinutes(request.getDurationMinutes());
+        }
+        if (request.getDescription() != null) {
+            session.setDescription(request.getDescription());
+        }
+        if (request.getStatus() != null) {
+            session.setStatus(request.getStatus());
+        }
+
+        return sessionRepository.save(session);
+    }
+
+    public List<Session> getPsychologistSessions(Psychologist psychologist, LocalDateTime from, LocalDateTime to) {
+        if (from != null && to != null) {
+            return sessionRepository.findByPsychologistIdAndScheduledAtBetween(
+                    psychologist.getId(), from, to);
+        }
+        return sessionRepository.findByPsychologistIdOrderByScheduledAtDesc(psychologist.getId());
+    }
+
+    public List<Session> getClientSessions(Client client, LocalDateTime from, LocalDateTime to) {
+        if (from != null && to != null) {
+            return sessionRepository.findByClientIdAndScheduledAtBetween(client.getId(), from, to);
+        }
+        return sessionRepository.findByClientIdOrderByScheduledAtDesc(client.getId());
+    }
+
+    @Transactional
+    public Session cancelSession(Long sessionId, String userType, Object user) {
+        Session session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session not found"));
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime sessionTime = session.getScheduledAt();
+
+        if (userType.equals("PSYCHOLOGIST")) {
+            Psychologist psychologist = (Psychologist) user;
+            if (!session.getPsychologist().getId().equals(psychologist.getId())) {
+                throw new RuntimeException("Session does not belong to this psychologist");
+            }
+            // Психолог может отменить в любое время
+            session.setStatus(Session.SessionStatus.CANCELLED);
+        } else if (userType.equals("CLIENT")) {
+            Client client = (Client) user;
+            if (!session.getClient().getId().equals(client.getId())) {
+                throw new RuntimeException("Session does not belong to this client");
+            }
+            // Клиент может отменить не позднее чем за 12 часов до начала
+            if (sessionTime.minusHours(12).isBefore(now)) {
+                throw new RuntimeException("Cannot cancel session less than 12 hours before start");
+            }
+            session.setStatus(Session.SessionStatus.CANCELLED);
+        } else {
+            throw new RuntimeException("Invalid user type");
+        }
+
+        return sessionRepository.save(session);
+    }
+
+    @Data
+    public static class SessionRequest {
+        private Long clientId;
+        private LocalDateTime scheduledAt;
+        private Integer durationMinutes = 50;
+        private String description;
+    }
+
+    @Data
+    public static class SessionUpdateRequest {
+        private LocalDateTime scheduledAt;
+        private Integer durationMinutes;
+        private String description;
+        private Session.SessionStatus status;
+    }
+}package com.psychology.service;
+
+public class UserService {
+}
+package com.psychology.websocket;
+
+public class ChatController {
+}
+package com.psychology.websocket;
+
+public class ChatMessage {
+}
+package com.psychology.websocket;
+
+public class WebSocketEventListener {
+}
+databaseChangeLog:
+  - changeSet:
+      id: 1
+      author: psychology
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: phone
+                  type: VARCHAR(20)
+                  constraints:
+                    unique: true
+                    nullable: false
+              - column:
+                  name: role
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+        - createTable:
+            tableName: psychologists
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    foreignKeyName: fk_psychologist_user
+                    references: users(id)
+              - column:
+                  name: full_name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: email
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: education
+                  type: TEXT
+              - column:
+                  name: specialization
+                  type: VARCHAR(200)
+              - column:
+                  name: description
+                  type: TEXT
+              - column:
+                  name: photo_url
+                  type: VARCHAR(500)
+              - column:
+                  name: verified
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+              - column:
+                  name: verified_at
+                  type: TIMESTAMP
+
+        - createTable:
+            tableName: clients
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    foreignKeyName: fk_client_user
+                    references: users(id)
+              - column:
+                  name: full_name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: age
+                  type: INTEGER
+              - column:
+                  name: photo_url
+                  type: VARCHAR(500)
+              - column:
+                  name: psychologist_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_client_psychologist
+                    references: psychologists(id)
+              - column:
+                  name: linked_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+        - createTable:
+            tableName: invites
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: token
+                  type: VARCHAR(100)
+                  constraints:
+                    unique: true
+                    nullable: false
+              - column:
+                  name: psychologist_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_invite_psychologist
+                    references: psychologists(id)
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: expires_at
+                  type: TIMESTAMP
+              - column:
+                  name: used
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+              - column:
+                  name: used_at
+                  type: TIMESTAMP
+
+        - createIndex:
+            tableName: users
+            columns:
+              - column:
+                  name: phone
+            indexName: idx_users_phone
+
+        - createIndex:
+            tableName: psychologists
+            columns:
+              - column:
+                  name: email
+            indexName: idx_psychologists_email
+
+        - createIndex:
+            tableName: invites
+            columns:
+              - column:
+                  name: token
+            indexName: idx_invites_token
+databaseChangeLog:
+  - include:
+      file: db/changelog/changes/001-initial-schema.yaml
+# Server
+server.port=8080
+#server.servlet.context-path=/api
+
+# Database (PostgreSQL)
+spring.datasource.url=jdbc:postgresql://localhost:5432/psychology_db
+spring.datasource.username=psychology_user
+spring.datasource.password=psychology_pass
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+# JPA
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+# Включим логирование SQL с параметрами
+spring.jpa.properties.hibernate.show_sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.properties.hibernate.use_sql_comments=true
+
+# Логирование запросов
+logging.level.org.hibernate.SQL=DEBUG
+logging.level.org.hibernate.type.descriptor.sql.BasicBinder=TRACE
+spring.jpa.properties.hibernate.jdbc.lob.non_contextual_creation=true
+
+# Отключаем некоторые логи, чтобы не перегружать
+logging.level.org.hibernate.orm.jdbc.bind=TRACE
+logging.level.org.springframework.boot.autoconfigure=ERROR
+# Redis
+spring.data.redis.host=localhost
+spring.data.redis.port=6379
+spring.data.redis.timeout=60000
+
+# JWT
+jwt.secret=mySuperSecretKeyForJWTGenerationWithAtLeast256BitsLengthToBeSecureEnough
+# 30 минут
+jwt.access-expiration=1800000
+# 7 дней
+jwt.refresh-expiration=604800000
+
+# File Upload
+spring.servlet.multipart.max-file-size=5MB
+spring.servlet.multipart.max-request-size=10MB
+
+# Logging
+logging.level.com.psychology=DEBUG
+logging.level.org.springframework.security=DEBUG
+logging.level.org.springframework.web=DEBUG
+
+# Tomcat
+server.tomcat.max-threads=200
+server.tomcat.min-spare-threads=10
+server.tomcat.connection-timeout=60000
+
+вот что мы делаем
+Привет нужно написать бэкенд по этому Тз
+Техническое задание: Веб-сервис для онлайн-работы психолога с клиентами
+1. Общая концепция
+Веб-сервис предназначен для безопасного и конфиденциального взаимодействия психолога и его клиентов. Ключевые принципы:
+
+Безопасность: минимизация хранения чувствительных данных, шифрование
+
+Простота: интуитивный интерфейс, минималистичный дизайн
+
+Конфиденциальность: строгое разграничение доступа между клиентами и психологами
+
+Мобильность: адаптивный дизайн для работы с любых устройств
+
+Отличительная особенность регистрации:
+
+Клиент: может зарегистрироваться ТОЛЬКО по пригласительной ссылке от психолога
+
+Психолог: регистрируется самостоятельно по номеру телефона через публичную форму
+
+2. Роли в системе
+2.1 Клиент
+Пользователь, получивший доступ к платформе исключительно по пригласительной ссылке психолога. После регистрации автоматически привязывается к пригласившему психологу.
+
+2.2 Психолог
+Специалист, который самостоятельно регистрируется в системе. Функционал:
+
+Управление клиентами
+
+Назначение сеансов
+
+Ведение рекомендаций и заметок
+
+Общение с клиентами
+
+Ведение дневника наблюдений
+
+3. Регистрация и авторизация
+3.1 Общий принцип
+В системе отсутствуют логины и пароли
+
+Авторизация осуществляется по номеру телефона + одноразовый код (OTP)
+
+Используется JWT для авторизации и Redis для временных данных
+
+3.2 Регистрация психолога
+Процесс регистрации:
+
+Психолог переходит на публичную страницу регистрации
+
+Вводит номер телефона
+
+Получает одноразовый код (4-6 цифр) по SMS (в логах на этапе разработки)
+
+Вводит код для подтверждения
+
+Заполняет расширенный профиль:
+
+ФИО (обязательно)
+
+Контактный email (обязательно)
+
+Образование и квалификация (текстовое поле)
+
+Специализация (выбор из списка или теги)
+
+Краткое описание о себе
+
+Фото (опционально)
+
+Согласие с правилами платформы и этическим кодексом
+
+Профиль отправляется на ручную верификацию администратором
+
+После верификации психолог получает полный доступ к функционалу
+
+3.3 Пригласительные ссылки (для клиентов)
+Создание:
+
+Психолог может создавать пригласительные ссылки из своего ЛК
+
+Ссылка содержит уникальный токен
+
+Параметры ссылки:
+
+Одноразовая
+
+Срок действия: 7 дней
+
+Привязана к конкретному психологу
+
+Использование:
+
+Клиент переходит по пригласительной ссылке
+
+Система проверяет валидность токена
+
+Клиенту предлагается ввести номер телефона
+
+Далее процесс аналогичен OTP-авторизации
+
+ВАЖНО: Клиент не может зарегистрироваться без действующей пригласительной ссылки от психолога.
+
+3.4 Вход по номеру телефона
+Пользователь вводит номер телефона
+
+Генерируется одноразовый код (4-6 цифр)
+
+Код:
+
+Сохраняется в Redis
+
+TTL: 5 минут
+
+Привязан к номеру телефона
+
+Код отправляется пользователю (на этапе разработки — вывод в логи)
+
+Пользователь вводит код
+
+При успехе:
+
+Создаётся пользователь (если новый)
+
+Создаётся JWT-токен
+
+Пользователь авторизуется в системе
+
+3.5 Защита от перебора OTP
+Максимум 3 попытки ввода OTP с одного номера телефона
+
+Блокировка повторной отправки OTP: 1 минута после предыдущей отправки
+
+Автоматическая блокировка номера после 5 неудачных попыток авторизации в течение часа
+
+Rate-limiting: не более 10 запросов авторизации в минуту с одного IP
+
+4. Профили пользователей
+4.1 Профиль клиента
+После первого входа по пригласительной ссылке клиенту предлагается заполнить профиль:
+
+ФИО (обязательно)
+
+Возраст (обязательно)
+
+Фото (опционально)
+
+После заполнения:
+
+Клиент автоматически привязывается к пригласившему психологу
+
+Попадает в личный кабинет
+
+Получает доступ ко всему функционалу для клиентов
+
+4.2 Профиль психолога
+После верификации администратором психолог может:
+
+Редактировать профиль (ФИО, фото, описание, специализация)
+
+Просматривать свой публичный профиль (как его видят клиенты)
+
+Настраивать уведомления
+
+Видеть статистику: количество активных клиентов, проведенных сеансов
+
+5. Функционал клиента
+5.1 Главный экран
+Информация о психологе (ФИО, фото, специализация)
+
+Ближайший сеанс (дата, время, статус)
+
+Быстрый доступ к чату
+
+Счетчик непрочитанных сообщений
+
+Уведомления о новых событиях
+
+5.2 Чат с психологом
+Текстовый чат в реальном времени (WebSocket)
+
+История сообщений
+
+Доступен только между клиентом и его психологом
+
+Поддержка файлов (изображения, PDF) до 5MB
+
+Ограничение длины сообщения: 2000 символов
+
+Звонки: опционально, кнопка может быть реализована как заглушка с описанием "Видеозвонки в разработке" или WebRTC в будущем.
+
+5.3 Расписание сеансов
+Список будущих сеансов с возможностью подтверждения
+
+История прошедших сеансов:
+
+Дата и время
+
+Длительность
+
+Статус (проведён / отменён / перенесен)
+
+Уведомления за 24 часа и 1 час до начала сеанса
+
+5.4 Дневник клиента
+Клиент может создавать записи:
+
+Дата (автоматически)
+
+Текст (мысли, переживания, события)
+
+Теги/категории (опционально)
+
+Ограничение длины записи: 5000 символов
+
+Записи доступны:
+
+Клиенту (полный доступ)
+
+Его психологу (только просмотр)
+
+Возможность редактирования и удаления записей клиентом
+
+5.5 Рекомендации специалиста
+Список рекомендаций от психолога
+
+Рекомендации включают:
+
+Описание
+
+Период действия
+
+Статус (актуальна / завершена)
+
+Клиент видит только актуальные и прошлые рекомендации
+
+Фильтрация по статусу и дате
+
+5.6 Уведомления
+Push-уведомления в браузере (при согласии)
+
+Внутрисервисные уведомления
+
+Типы уведомлений:
+
+Новое сообщение в чате
+
+Назначен новый сеанс
+
+Напоминание о сеансе (за 24 часа и 1 час)
+
+Отмена или перенос сеанса
+
+Новая рекомендация от психолога
+
+Напоминание о заполнении дневника (настраивается психологом)
+
+6. Функционал психолога
+6.1 Дашборд
+Список ближайших сеансов (сегодня/завтра):
+
+Дата и время
+
+Клиент (ФИО, фото)
+
+Статус сеанса
+
+Общее количество клиентов
+
+Статистика за текущий месяц:
+
+Проведено сеансов
+
+Запланировано сеансов
+
+Новые клиенты
+
+Быстрые действия: создать сеанс, написать клиенту
+
+6.2 Управление клиентами
+Список всех клиентов с поиском и фильтрацией
+
+Карточка клиента содержит:
+
+Профиль клиента (ФИО, возраст, фото)
+
+Историю сеансов
+
+Дневник клиента (только просмотр)
+
+Рекомендации (история и активные)
+
+Создание пригласительных ссылок для новых клиентов
+
+6.3 Управление сеансами
+Статусы сеанса:
+
+Запланирован - сеанс создан, ожидает проведения
+
+Подтвержден - клиент подтвердил участие
+
+В процессе - сеанс начался (для будущей интеграции)
+
+Завершен - сеанс проведен успешно
+
+Отменен - сеанс отменен одной из сторон
+
+Перенесен - сеанс перенесен на другое время
+
+Создание сеанса:
+
+Выбор клиента из списка
+
+Выбор даты и времени
+
+Указание длительности (по умолчанию 50 минут)
+
+Добавление описания/заметок (опционально)
+
+Правила отмены/переноса:
+
+Психолог может отменить или перенести сеанс в любое время
+
+Клиент может отменить сеанс не позднее чем за 12 часов до начала
+
+При отмене сеанса вторая сторона получает уведомление
+
+При переносе создается новая запись о сеансе, старая помечается как "Перенесен"
+
+6.4 Рекомендации
+Психолог может:
+
+Добавлять рекомендации клиенту
+
+Редактировать активные рекомендации
+
+Завершать (помечать как неактуальные)
+
+Просматривать историю всех рекомендаций
+
+Шаблоны рекомендаций для быстрого создания
+
+6.5 Чат с клиентами
+Единый интерфейс для общения со всеми клиентами
+
+Список диалогов с последними сообщениями
+
+Поиск по истории сообщений
+
+Индикатор непрочитанных сообщений
+
+Возможность прикреплять файлы к сообщениям
+
+6.6 Статистика и отчеты
+Количество сеансов за период
+
+Активность клиентов (посещаемость, записи в дневнике)
+
+Общая нагрузка (часов в неделю/месяц)
+
+Экспорт данных в CSV для личного учета
+
+7. Безопасность и ограничения доступа
+7.1 Разграничение прав
+Клиент имеет доступ только к своим данным
+
+Психолог имеет доступ только к данным своих клиентов
+
+Администратор имеет доступ к верификации психологов и технической поддержке
+
+7.2 Защита данных
+JWT для авторизации
+
+Redis для хранения:
+
+OTP кодов
+
+Токенов приглашений
+
+Blacklist токенов
+
+Сессионных данных
+
+Защита от:
+
+Перебора OTP
+
+Повторного использования invite-ссылок
+
+XSS и CSRF атак
+
+7.3 Управление JWT токенами
+Access Token: срок жизни 30 минут
+
+Refresh Token: срок жизни 7 дней, хранится в HttpOnly cookie
+
+Механизм обновления:
+
+При истечении Access Token фронтенд использует Refresh Token
+
+Refresh Token одноразовый
+
+При выходе из системы токены попадают в blacklist
+
+Инвалидация всех токенов при смене номера телефона
+
+7.4 Защита персональных данных
+Шифрование чувствительных данных (номера телефонов) с использованием AES-256
+
+Автоматическое удаление записей дневника старше 3 лет (настраиваемо)
+
+История чатов хранится 2 года, затем анонимизируется
+
+Экспорт всех пользовательских данных в формате JSON
+
+Полное удаление аккаунта по запросу пользователя (GDPR compliance)
+
+7.5 Rate limiting
+100 запросов в минуту на аутентифицированные эндпоинты
+
+10 запросов в минуту на публичные эндпоинты
+
+Отдельные лимиты для OTP и регистрации
+
+8. Технические ограничения и упрощения
+Для MVP:
+❌ Без платежных систем
+❌ Без мобильного приложения (только веб)
+❌ Без сложной видеосвязи (WebRTC)
+❌ Без групповых сеансов или чатов
+❌ Без сложной аналитики и AI-рекомендаций
+
+✅ Акцент на backend-логику, безопасность и роли
+✅ Внутренние уведомления (без SMS/email на MVP)
+✅ Простой календарь (без выбора слотов, ручной ввод)
+✅ Базовый поиск и фильтрация
+
+Технические ограничения:
+Максимальный размер файла: 5MB
+
+Максимальное количество клиентов у психолога: 50
+
+Максимальная длина сообщений: 2000 символов
+
+Хранение файлов: локальное или S3-совместимое
+
+9. Технологический стек
+Backend:
+Java 17+
+
+Spring Boot 3.x
+
+Spring Security с JWT
+
+Spring Data JPA для работы с БД
+
+Spring WebSocket для чата
+
+Redis для кэша, сессий и OTP
+
+PostgreSQL (основная БД) / SQLite (для разработки)
+
+JUnit 5, Mockito для тестирования
+
+Liquibase/Flyway для миграций
+
+Frontend (рекомендуемый):
+React 18+ или Vue 3
+
+TypeScript
+
+Vite как сборщик
+
+Tailwind CSS для стилей
+
+Axios для HTTP-запросов
+
+Socket.io-client или STOMP для WebSocket
+
+React Router / Vue Router для навигации
+
+Инфраструктура:
+Docker для контейнеризации
+
+Docker Compose для локальной разработки
+
+GitHub Actions / GitLab CI для CI/CD
+
+Nginx как reverse proxy
+
+Let's Encrypt для HTTPS
+
+10. API спецификация
+10.1 Общие принципы:
+RESTful API с JSON форматом
+
+Версионирование в URL: /api/v1/
+
+Стандартные HTTP коды ответов
+
+Пагинация: limit и offset параметры
+
+Фильтрация и сортировка через query-параметры
+
+10.2 Основные группы эндпоинтов:
+/api/v1/auth/** - авторизация, OTP, refresh токенов
+
+/api/v1/profile/** - управление профилями
+
+/api/v1/invites/** - работа с приглашениями (создание, валидация)
+
+/api/v1/sessions/** - управление сеансами
+
+/api/v1/chat/** - REST API для чата + WebSocket
+
+/api/v1/journal/** - дневник клиента
+
+/api/v1/recommendations/** - рекомендации
+
+/api/v1/notifications/** - уведомления
+
+/api/v1/admin/** - администрирование (верификация психологов)
+
+10.3 WebSocket для чата:
+Endpoint: /ws/chat
+
+Протокол: STOMP over WebSocket
+
+Авторизация через JWT в query-параметре
+
+Topics:
+
+/user/{userId}/queue/messages - личные сообщения
+
+/topic/notifications - общие уведомления
+
+11. Жизненный цикл данных
+11.1 Время хранения:
+OTP коды: 5 минут (Redis)
+
+Invite-токены: 7 дней (Redis)
+
+Blacklist токенов: 30 дней (Redis)
+
+Сессионные данные: до 24 часов (Redis)
+
+11.2 Автоматическая архивация:
+Завершенные сеансы: через 30 дней → архив
+
+Неактивные диалоги (6+ месяцев): сжатие
+
+Удаленные аккаунты: полное удаление через 30 дней
+
+11.3 Бэкапы:
+Ежедневные инкрементальные бэкапы БД
+
+Еженедельные полные бэкапы
+
+Хранение бэкапов 90 дней
+
+12. Разработка и деплой
+12.1 Этапы разработки:
+Phase 1: Базовая аутентификация + профили
+
+Phase 2: Система приглашений + привязка клиентов
+
+Phase 3: Чат + уведомления
+
+Phase 4: Сеансы + расписание
+
+Phase 5: Дневник + рекомендации
+
+Phase 6: Статистика + админ-панель
+
+12.2 Деплой:
+Локальная разработка: Docker Compose
+
+Staging: отдельный сервер/контейнер
+
+Production: облачный хостинг (AWS/GCP) или VPS
+
+12.3 Мониторинг:
+Логирование в ELK Stack или аналоги
+
+Мониторинг здоровья эндпоинтов
+
+Трассировка запросов
+
+Метрики производительности
+
+13. Возможности для дальнейшего развития
+Высокий приоритет:
+SMS-шлюз для реальной отправки OTP
+
+Email-уведомления
+
+WebRTC звонки
+
+Мобильное приложение (React Native/Flutter)
+
+Средний приоритет:
+Платежная система для оплаты сеансов
+
+Групповые сеансы
+
+Библиотека материалов (статьи, упражнения)
+
+Система отзывов о психологах
+
+Низкий приоритет:
+AI-ассистент для анализа настроения
+
+Интеграция с календарями (Google Calendar, Outlook)
+
+Видеотранскрипция сеансов
+
+Сертификаты и документооборот
+
+14. Ключевые отличия регистрации
+Для психолога:
+Публичная страница регистрации
+
+Ввод номера телефона → OTP
+
+Заполнение расширенного профиля
+
+Ручная верификация администратором
+
+Полный доступ после верификации
+
+Для клиента:
+ТОЛЬКО через пригласительную ссылку психолога
+
+Ввод номера телефона → OTP
+
+Заполнение базового профиля (ФИО, возраст)
+
+Автоматическая привязка к психологу
+
+Немедленный доступ к функционалу
