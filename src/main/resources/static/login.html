@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход - PsyConnect</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+<nav class="navbar">
+    <div class="container">
+        <div class="logo">
+            <i class="fas fa-brain"></i>
+            <a href="index.html" style="color: inherit; text-decoration: none;">
+                <span>PsyConnect</span>
+            </a>
+        </div>
+        <div class="nav-links">
+            <a href="psychologist-register.html">Я психолог</a>
+            <a href="index.html">На главную</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="form-container">
+        <h1 class="form-title">Вход в систему</h1>
+        <p class="form-subtitle" style="text-align: center; color: var(--gray-600); margin-bottom: 30px;">
+            Войдите по номеру телефона. Мы отправим вам одноразовый код
+        </p>
+
+        <form id="loginForm" onsubmit="login(event)">
+            <div class="form-group">
+                <label for="loginPhone" class="form-label">Номер телефона *</label>
+                <input type="tel" id="loginPhone" class="form-input" placeholder="+79991234567" required>
+            </div>
+
+            <div class="form-group">
+                <button type="button" class="btn btn-secondary" onclick="sendLoginOTP()" style="width: 100%;">
+                    <i class="fas fa-sms"></i> Получить код по SMS
+                </button>
+            </div>
+
+            <div class="form-group">
+                <label for="loginOTP" class="form-label">Код из SMS *</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="loginOTP" class="form-input" placeholder="123456" maxlength="6" required>
+                    <button type="button" class="btn btn-secondary" onclick="sendLoginOTP()">
+                        Повторить
+                    </button>
+                </div>
+                <div class="form-hint" id="otpTimer" style="display: none;">
+                    Можно запросить новый код через: <span id="timer">60</span> сек
+                </div>
+            </div>
+
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <i class="fas fa-sign-in-alt"></i> Войти
+                </button>
+            </div>
+
+            <div class="form-group">
+                <div class="role-selector" style="text-align: center; padding: 20px; background: var(--gray-100); border-radius: var(--radius);">
+                    <p style="margin-bottom: 10px;">Войти как:</p>
+                    <div style="display: flex; gap: 10px; justify-content: center;">
+                        <button type="button" class="btn btn-outline" onclick="loginAsPsychologist()">
+                            <i class="fas fa-user-md"></i> Психолог
+                        </button>
+                        <button type="button" class="btn btn-outline" onclick="loginAsClient()">
+                            <i class="fas fa-user"></i> Клиент
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <div class="form-footer">
+            <p>Нет аккаунта?
+                <a href="psychologist-register.html">Зарегистрироваться как психолог</a><br>
+                <small>Клиенты регистрируются только по приглашениям психологов</small>
+            </p>
+        </div>
+    </div>
+</div>
+
+<script src="script.js"></script>
+<script>
+    let otpTimer = null;
+    let timerSeconds = 60;
+
+    async function sendLoginOTP() {
+        const phone = document.getElementById('loginPhone').value;
+
+        if (!phone || !validatePhone(phone)) {
+            showStatus('Введите корректный номер телефона', 'error');
+            return;
+        }
+
+        showStatus('Отправляем код...', 'info');
+
+        // Заглушка для API
+        setTimeout(() => {
+            showStatus(`Код отправлен на ${phone}. Для теста используйте: 123456`, 'success');
+
+            // Запустить таймер
+            startOTPTimer();
+        }, 1000);
+    }
+
+    function startOTPTimer() {
+        const otpTimerElement = document.getElementById('otpTimer');
+        const timerElement = document.getElementById('timer');
+
+        otpTimerElement.style.display = 'block';
+        timerSeconds = 60;
+        timerElement.textContent = timerSeconds;
+
+        if (otpTimer) clearInterval(otpTimer);
+
+        otpTimer = setInterval(() => {
+            timerSeconds--;
+            timerElement.textContent = timerSeconds;
+
+            if (timerSeconds <= 0) {
+                clearInterval(otpTimer);
+                otpTimerElement.style.display = 'none';
+            }
+        }, 1000);
+    }
+
+    async function login(event) {
+        event.preventDefault();
+
+        const phone = document.getElementById('loginPhone').value;
+        const otp = document.getElementById('loginOTP').value;
+
+        if (!phone || !validatePhone(phone)) {
+            showStatus('Введите корректный номер телефона', 'error');
+            return;
+        }
+
+        if (!otp || otp.length !== 6) {
+            showStatus('Введите 6-значный код из SMS', 'error');
+            return;
+        }
+
+        showStatus('Входим в систему...', 'info');
+
+        // Заглушка - перенаправить через 1.5 секунды
+        setTimeout(() => {
+            showStatus('Вход успешен!', 'success');
+
+            // Определить, куда перенаправить (по умолчанию - на главную)
+            // В реальном приложении здесь был бы запрос к API для получения роли пользователя
+            window.location.href = 'index.html';
+        }, 1500);
+    }
+
+    // Быстрый вход для демонстрации
+    function loginAsPsychologist() {
+        document.getElementById('loginPhone').value = '+79991234567';
+        document.getElementById('loginOTP').value = '123456';
+
+        showStatus('Быстрый вход как психолог...', 'info');
+
+        setTimeout(() => {
+            // Мок данные психолога
+            const mockUser = {
+                id: 1,
+                phone: '+79991234567',
+                userRole: 'ROLE_PSYCHOLOGIST',
+                fullName: 'Иванов Иван Иванович',
+                email: 'ivanov@example.com',
+                verified: true
+            };
+
+            localStorage.setItem('currentUser', JSON.stringify(mockUser));
+            localStorage.setItem('accessToken', 'mock_token_psych');
+
+            showStatus('Вы вошли как психолог!', 'success');
+
+            setTimeout(() => {
+                window.location.href = 'psychologist-dashboard.html';
+            }, 1000);
+        }, 500);
+    }
+
+    function loginAsClient() {
+        document.getElementById('loginPhone').value = '+79997654321';
+        document.getElementById('loginOTP').value = '123456';
+
+        showStatus('Быстрый вход как клиент...', 'info');
+
+        setTimeout(() => {
+            // Мок данные клиента
+            const mockUser = {
+                id: 2,
+                phone: '+79997654321',
+                userRole: 'ROLE_CLIENT',
+                fullName: 'Мария Петрова',
+                age: 25,
+                psychologist: {
+                    id: 1,
+                    name: 'Иванов Иван Иванович'
+                }
+            };
+
+            localStorage.setItem('currentUser', JSON.stringify(mockUser));
+            localStorage.setItem('accessToken', 'mock_token_client');
+
+            showStatus('Вы вошли как клиент!', 'success');
+
+            setTimeout(() => {
+                window.location.href = 'client-dashboard.html';
+            }, 1000);
+        }, 500);
+    }
+
+    // Инициализация
+    document.addEventListener('DOMContentLoaded', function() {
+        // Предзаполнить тестовые данные
+        document.getElementById('loginPhone').value = '+79991234567';
+        document.getElementById('loginOTP').value = '123456';
+    });
+</script>
+</body>
+</html>

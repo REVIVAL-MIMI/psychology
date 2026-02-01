@@ -1,0 +1,56 @@
+### 1. Отправить OTP
+POST http://localhost:8080/api/v1/auth/send-otp
+Content-Type: application/json
+
+{
+  "phone": "+79991234567"
+}
+
+### 2. Проверить OTP и войти
+POST http://localhost:8080/api/v1/auth/verify-otp
+Content-Type: application/json
+
+{
+  "phone": "+79991234567",
+  "otp": "123456"
+}
+
+> {%
+    client.global.set("access_token", response.body.accessToken);
+    client.global.set("refresh_token", response.body.refreshToken);
+%}
+
+### 3. Получить профиль
+GET http://localhost:8080/api/v1/profile
+Authorization: Bearer {{access_token}}
+
+### 4. Создать запись в дневнике
+POST http://localhost:8080/api/v1/journal
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "content": "Сегодня был продуктивный день. Завершил важный проект.",
+  "mood": "HAPPY",
+  "tags": ["работа", "успех", "продуктивность"]
+}
+
+### 5. Получить записи дневника
+GET http://localhost:8080/api/v1/journal
+Authorization: Bearer {{access_token}}
+
+### 6. Получить дашборд клиента
+GET http://localhost:8080/api/v1/dashboard/client
+Authorization: Bearer {{access_token}}
+
+### 7. Получить уведомления
+GET http://localhost:8080/api/v1/notifications
+Authorization: Bearer {{access_token}}
+
+### 8. Поиск по тегам
+GET http://localhost:8080/api/v1/journal/search?tag=работа
+Authorization: Bearer {{access_token}}
+
+### 9. Статистика дневника
+GET http://localhost:8080/api/v1/journal/stats
+Authorization: Bearer {{access_token}}

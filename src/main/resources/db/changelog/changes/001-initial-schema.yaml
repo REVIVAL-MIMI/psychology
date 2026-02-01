@@ -1,10 +1,11 @@
 databaseChangeLog:
+
   - changeSet:
-      id: 1
+      id: 10
       author: psychology
       changes:
         - createTable:
-            tableName: users
+            tableName: notifications
             columns:
               - column:
                   name: id
@@ -14,16 +15,119 @@ databaseChangeLog:
                     primaryKey: true
                     nullable: false
               - column:
-                  name: phone
-                  type: VARCHAR(20)
+                  name: user_id
+                  type: BIGINT
                   constraints:
-                    unique: true
                     nullable: false
+                    foreignKeyName: fk_notification_user
+                    references: users(id)
+                    onDelete: CASCADE
               - column:
-                  name: role
+                  name: type
                   type: VARCHAR(50)
                   constraints:
                     nullable: false
+              - column:
+                  name: title
+                  type: VARCHAR(200)
+              - column:
+                  name: message
+                  type: TEXT
+              - column:
+                  name: is_read
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+              - column:
+                  name: related_entity_id
+                  type: BIGINT
+              - column:
+                  name: related_entity_type
+                  type: VARCHAR(50)
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+              - createIndex:
+                  tableName: notifications
+                  columns:
+                    - column:
+                        name: user_id
+                    - column:
+                        name: is_read
+                    - column:
+                        name: created_at
+                  indexName: idx_notifications_user_read
+
+              - createIndex:
+                  tableName: notifications
+                  columns:
+                    - column:
+                        name: user_id
+                    - column:
+                        name: type
+                  indexName: idx_notifications_user_type
+        - createTable:
+            tableName: uploaded_files
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: filename
+                  type: VARCHAR(255)
+              - column:
+                  name: original_name
+                  type: VARCHAR(255)
+              - column:
+                  name: content_type
+                  type: VARCHAR(100)
+              - column:
+                  name: size
+                  type: BIGINT
+              - column:
+                  name: uploaded_by
+                  type: BIGINT
+                  constraints:
+                    foreignKeyName: fk_file_uploaded_by
+                    references: users(id)
+              - column:
+                  name: uploaded_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+        - createTable:
+            tableName: journal_entries
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: client_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_journal_client
+                    references: clients(id)
+                    onDelete: CASCADE
+              - column:
+                  name: content
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: mood
+                  type: VARCHAR(50)
+              - column:
+                  name: tags
+                  type: JSONB
               - column:
                   name: created_at
                   type: TIMESTAMP
@@ -31,8 +135,104 @@ databaseChangeLog:
               - column:
                   name: updated_at
                   type: TIMESTAMP
-                  defaultValueComputed: CURRENT_TIMESTAMP
 
+              - createTable:
+                  tableName: recommendations
+                  columns:
+                    - column:
+                        name: id
+                        type: BIGINT
+                        autoIncrement: true
+                        constraints:
+                          primaryKey: true
+                          nullable: false
+                    - column:
+                        name: psychologist_id
+                        type: BIGINT
+                        constraints:
+                          nullable: false
+                          foreignKeyName: fk_recommendation_psychologist
+                          references: psychologists(id)
+                          onDelete: CASCADE
+                    - column:
+                        name: client_id
+                        type: BIGINT
+                        constraints:
+                          nullable: false
+                          foreignKeyName: fk_recommendation_client
+                          references: clients(id)
+                          onDelete: CASCADE
+                    - column:
+                        name: title
+                        type: VARCHAR(200)
+                        constraints:
+                          nullable: false
+                    - column:
+                        name: content
+                        type: TEXT
+                        constraints:
+                          nullable: false
+                    - column:
+                        name: deadline
+                        type: TIMESTAMP
+                    - column:
+                        name: priority
+                        type: INTEGER
+                        defaultValue: 3
+                        constraints:
+                          nullable: false
+                    - column:
+                        name: categories
+                        type: JSONB
+                    - column:
+                        name: completed
+                        type: BOOLEAN
+                        defaultValueBoolean: false
+                        constraints:
+                          nullable: false
+                    - column:
+                        name: completed_by_client
+                        type: BOOLEAN
+                        defaultValueBoolean: false
+                    - column:
+                        name: completed_at
+                        type: TIMESTAMP
+                    - column:
+                        name: created_at
+                        type: TIMESTAMP
+                        defaultValueComputed: CURRENT_TIMESTAMP
+                    - column:
+                        name: updated_at
+                        type: TIMESTAMP
+
+              - createIndex:
+                  tableName: journal_entries
+                  columns:
+                    - column:
+                        name: client_id
+                    - column:
+                        name: created_at
+                  indexName: idx_journal_client_created
+
+              - createIndex:
+                  tableName: recommendations
+                  columns:
+                    - column:
+                        name: client_id
+                    - column:
+                        name: completed
+                    - column:
+                        name: deadline
+                  indexName: idx_recommendations_client_status
+
+              - createIndex:
+                  tableName: recommendations
+                  columns:
+                    - column:
+                        name: psychologist_id
+                    - column:
+                        name: completed
+                  indexName: idx_recommendations_psychologist_status
         - createTable:
             tableName: psychologists
             columns:

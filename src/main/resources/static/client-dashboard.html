@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Личный кабинет клиента - PsyConnect</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+<div class="dashboard">
+    <!-- Сайдбар -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo" style="color: white;">
+                <i class="fas fa-brain"></i>
+                <span>PsyConnect</span>
+            </div>
+            <div class="user-info" style="margin-top: 20px; color: var(--gray-300);">
+                <div class="user-name" style="font-weight: 600; color: white;">Мария Петрова</div>
+                <div class="user-role">Клиент</div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="#dashboard" class="sidebar-link active">
+                <i class="fas fa-home"></i> Главная
+            </a>
+            <a href="#psychologist" class="sidebar-link">
+                <i class="fas fa-user-md"></i> Мой психолог
+            </a>
+            <a href="#chat" class="sidebar-link">
+                <i class="fas fa-comments"></i> Чат
+            </a>
+            <a href="#sessions" class="sidebar-link">
+                <i class="fas fa-calendar-alt"></i> Сеансы
+            </a>
+            <a href="#journal" class="sidebar-link">
+                <i class="fas fa-book"></i> Дневник
+            </a>
+            <a href="#recommendations" class="sidebar-link">
+                <i class="fas fa-tasks"></i> Рекомендации
+            </a>
+            <a href="#" class="sidebar-link" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> Выйти
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Основной контент -->
+    <main class="main-content">
+        <!-- Приветственный баннер -->
+        <div class="welcome-banner">
+            <h1>Здравствуйте, Мария!</h1>
+            <p>Ваш следующий сеанс запланирован на завтра, 15:00. У вас 3 непрочитанных сообщения.</p>
+        </div>
+
+        <!-- Основной контент -->
+        <div id="dashboard" class="tab-content active">
+            <div class="cards-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 40px;">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Мой психолог</h3>
+                    </div>
+                    <div class="psychologist-card" style="text-align: center; padding: 20px;">
+                        <div class="avatar-large" style="width: 80px; height: 80px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px; color: white; font-size: 36px;">
+                            <i class="fas fa-user-md"></i>
+                        </div>
+                        <h3 style="margin-bottom: 5px;">Иванов Иван Иванович</h3>
+                        <p style="color: var(--gray-600); margin-bottom: 15px;">Клинический психолог</p>
+                        <button class="btn btn-primary" onclick="showTab('psychologist')">
+                            <i class="fas fa-user-md"></i> Профиль психолога
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Ближайшие сеансы</h3>
+                        <span class="badge" style="background: var(--primary-color); color: white; padding: 4px 12px; border-radius: 20px;">2</span>
+                    </div>
+                    <div class="sessions-list">
+                        <div class="session-item" style="padding: 15px; background: var(--gray-100); border-radius: var(--radius); margin-bottom: 10px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <div>
+                                    <div style="font-weight: 600;">Завтра, 15:00</div>
+                                    <div style="font-size: 14px; color: var(--gray-600);">Длительность: 50 мин</div>
+                                </div>
+                                <span class="badge" style="background: var(--warning-color); color: white; padding: 4px 12px; border-radius: 20px;">Подтвержден</span>
+                            </div>
+                            <button class="btn btn-outline" style="width: 100%;">
+                                <i class="fas fa-video"></i> Подключиться к сеансу
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Быстрые действия</h3>
+                    </div>
+                    <div class="quick-actions" style="padding: 15px;">
+                        <button class="btn btn-primary" style="width: 100%; margin-bottom: 10px;" onclick="showTab('chat')">
+                            <i class="fas fa-comment"></i> Написать психологу
+                        </button>
+                        <button class="btn btn-success" style="width: 100%; margin-bottom: 10px;" onclick="showTab('journal')">
+                            <i class="fas fa-book"></i> Запись в дневник
+                        </button>
+                        <button class="btn btn-secondary" style="width: 100%;" onclick="showTab('recommendations')">
+                            <i class="fas fa-tasks"></i> Мои рекомендации
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Последние сообщения</h3>
+                    <a href="#chat" style="color: var(--primary-color); text-decoration: none;">Все сообщения →</a>
+                </div>
+                <div class="messages-preview">
+                    <div class="message-item" style="display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid var(--gray-200);">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <div class="avatar" style="width: 40px; height: 40px; background: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white;">
+                                <i class="fas fa-user-md"></i>
+                            </div>
+                            <div>
+                                <div style="font-weight: 600;">Иванов И.И.</div>
+                                <div style="color: var(--gray-600); font-size: 14px;">Как вы себя чувствуете после нашей последней сессии?</div>
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 12px; color: var(--gray-600);">15:25</div>
+                            <span class="badge" style="background: var(--primary-color); color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px;">3</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Таб психолога -->
+        <div id="psychologist" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Мой психолог</h3>
+                    <button class="btn btn-primary" onclick="showTab('chat')">
+                        <i class="fas fa-comment"></i> Написать сообщение
+                    </button>
+                </div>
+                <div class="psychologist-profile" style="padding: 30px;">
+                    <div style="display: grid; grid-template-columns: 200px 1fr; gap: 40px; align-items: start;">
+                        <div style="text-align: center;">
+                            <div class="avatar-xxl" style="width: 150px; height: 150px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: white; font-size: 60px;">
+                                <i class="fas fa-user-md"></i>
+                            </div>
+                            <h3 style="margin-bottom: 5px;">Иванов Иван Иванович</h3>
+                            <p style="color: var(--gray-600);">Клинический психолог</p>
+                        </div>
+
+                        <div>
+                            <div class="info-section" style="margin-bottom: 30px;">
+                                <h4 style="margin-bottom: 15px;">О специалисте</h4>
+                                <p>Опыт работы более 10 лет. Специализация: клиническая психология, работа с тревожными расстройствами, депрессией, паническими атаками.</p>
+                            </div>
+
+                            <div class="info-section" style="margin-bottom: 30px;">
+                                <h4 style="margin-bottom: 15px;">Образование</h4>
+                                <ul style="list-style: none; padding: 0;">
+                                    <li style="margin-bottom: 8px;">
+                                        <i class="fas fa-graduation-cap" style="color: var(--primary-color); margin-right: 10px;"></i>
+                                        Московский государственный университет, факультет психологии
+                                    </li>
+                                    <li>
+                                        <i class="fas fa-certificate" style="color: var(--primary-color); margin-right: 10px;"></i>
+                                        Сертифицированный специалист по когнитивно-поведенческой терапии
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div class="stats" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; background: var(--gray-100); padding: 20px; border-radius: var(--radius);">
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; font-weight: bold; color: var(--primary-color);">50+</div>
+                                    <div style="font-size: 14px; color: var(--gray-600);">клиентов</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; font-weight: bold; color: var(--primary-color);">10 лет</div>
+                                    <div style="font-size: 14px; color: var(--gray-600);">опыта</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; font-weight: bold; color: var(--primary-color);">4.9</div>
+                                    <div style="font-size: 14px; color: var(--gray-600);">рейтинг</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Таб чата (упрощенный) -->
+        <div id="chat" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Чат с психологом</h3>
+                </div>
+                <div style="padding: 20px;">
+                    <div class="chat-messages" style="height: 400px; margin-bottom: 20px;">
+                        <!-- Сообщения -->
+                    </div>
+                    <div class="chat-input" style="display: flex; gap: 10px;">
+                        <input type="text" placeholder="Введите сообщение..." style="flex: 1; padding: 12px; border: 1px solid var(--gray-300); border-radius: var(--radius);">
+                        <button class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="script.js"></script>
+<script>
+    // Простая навигация по табам
+    function showTab(tabName) {
+        // Скрыть все табы
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.remove('active');
+        });
+
+        // Показать выбранный таб
+        document.getElementById(tabName).classList.add('active');
+
+        // Обновить активную ссылку в сайдбаре
+        document.querySelectorAll('.sidebar-link').forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('href') === '#' + tabName) {
+                link.classList.add('active');
+            }
+        });
+    }
+
+    // Инициализация сайдбара
+    document.querySelectorAll('.sidebar-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            if (this.getAttribute('href').startsWith('#')) {
+                e.preventDefault();
+                const tabName = this.getAttribute('href').substring(1);
+                showTab(tabName);
+            }
+        });
+    });
+</script>
+</body>
+</html>

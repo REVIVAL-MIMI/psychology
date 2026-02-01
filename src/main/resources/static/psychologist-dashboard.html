@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Личный кабинет психолога - PsyConnect</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+<div class="dashboard">
+    <!-- Сайдбар -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo" style="color: white;">
+                <i class="fas fa-brain"></i>
+                <span>PsyConnect</span>
+            </div>
+            <div class="user-info" style="margin-top: 20px; color: var(--gray-300);">
+                <div class="user-name" style="font-weight: 600; color: white;">Иван Иванович</div>
+                <div class="user-role">Психолог</div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="#dashboard" class="sidebar-link active">
+                <i class="fas fa-tachometer-alt"></i> Дашборд
+            </a>
+            <a href="#clients" class="sidebar-link">
+                <i class="fas fa-users"></i> Клиенты
+            </a>
+            <a href="#invites" class="sidebar-link">
+                <i class="fas fa-link"></i> Приглашения
+            </a>
+            <a href="#chat" class="sidebar-link">
+                <i class="fas fa-comments"></i> Чат
+            </a>
+            <a href="#sessions" class="sidebar-link">
+                <i class="fas fa-calendar-alt"></i> Сеансы
+            </a>
+            <a href="#profile" class="sidebar-link">
+                <i class="fas fa-user-cog"></i> Профиль
+            </a>
+            <a href="#" class="sidebar-link" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> Выйти
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Основной контент -->
+    <main class="main-content">
+        <!-- Приветственный баннер -->
+        <div class="welcome-banner">
+            <h1>Добро пожаловать, Иван Иванович!</h1>
+            <p>Сегодня у вас запланировано 2 сеанса. Последнее сообщение от клиента 5 минут назад.</p>
+        </div>
+
+        <!-- Быстрые действия -->
+        <div class="quick-actions" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 40px;">
+            <button class="btn btn-primary" onclick="createInvite()">
+                <i class="fas fa-plus-circle"></i> Создать инвайт
+            </button>
+            <button class="btn btn-success">
+                <i class="fas fa-calendar-plus"></i> Назначить сеанс
+            </button>
+            <button class="btn btn-secondary">
+                <i class="fas fa-comment-medical"></i> Написать клиенту
+            </button>
+            <button class="btn btn-outline">
+                <i class="fas fa-chart-line"></i> Статистика
+            </button>
+        </div>
+
+        <!-- Контент по табам -->
+        <div id="dashboard" class="tab-content active">
+            <div class="cards-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Мои клиенты</h3>
+                        <span class="badge" style="background: var(--primary-color); color: white; padding: 4px 12px; border-radius: 20px;">5</span>
+                    </div>
+                    <div class="clients-list">
+                        <div class="client-item" style="display: flex; align-items: center; gap: 15px; padding: 12px 0; border-bottom: 1px solid var(--gray-200);">
+                            <div class="client-avatar" style="width: 40px; height: 40px; background: var(--gray-300); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="client-info">
+                                <div class="client-name" style="font-weight: 600;">Мария Петрова</div>
+                                <div class="client-last-session" style="font-size: 14px; color: var(--gray-600);">Последний сеанс: 2 дня назад</div>
+                            </div>
+                            <div class="client-status" style="margin-left: auto;">
+                                <span class="status-dot" style="width: 10px; height: 10px; background: var(--success-color); border-radius: 50%; display: block;"></span>
+                            </div>
+                        </div>
+                        <!-- Еще клиенты... -->
+                    </div>
+                    <a href="#clients" style="display: block; text-align: center; margin-top: 15px; color: var(--primary-color); text-decoration: none;">
+                        Все клиенты <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Ближайшие сеансы</h3>
+                    </div>
+                    <div class="sessions-list">
+                        <div class="session-item" style="padding: 12px 0; border-bottom: 1px solid var(--gray-200);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                <div class="session-time" style="font-weight: 600;">Сегодня, 15:00</div>
+                                <span class="session-status" style="background: var(--warning-color); color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">Подтвержден</span>
+                            </div>
+                            <div class="session-client" style="color: var(--gray-600);">
+                                <i class="fas fa-user"></i> Мария Петрова
+                            </div>
+                        </div>
+                        <!-- Еще сеансы... -->
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Статистика</h3>
+                    </div>
+                    <div class="stats" style="padding: 15px 0;">
+                        <div class="stat-item" style="display: flex; justify-content: space-between; padding: 8px 0;">
+                            <span>Всего сеансов</span>
+                            <span style="font-weight: 600;">24</span>
+                        </div>
+                        <div class="stat-item" style="display: flex; justify-content: space-between; padding: 8px 0;">
+                            <span>Активные клиенты</span>
+                            <span style="font-weight: 600;">5</span>
+                        </div>
+                        <div class="stat-item" style="display: flex; justify-content: space-between; padding: 8px 0;">
+                            <span>Доход за месяц</span>
+                            <span style="font-weight: 600;">45 000 ₽</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Таб Клиенты -->
+        <div id="clients" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Мои клиенты</h3>
+                    <input type="text" placeholder="Поиск клиентов..." style="padding: 8px 12px; border: 1px solid var(--gray-300); border-radius: var(--radius);">
+                </div>
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th>Имя</th>
+                        <th>Возраст</th>
+                        <th>Дата подключения</th>
+                        <th>Последний сеанс</th>
+                        <th>Действия</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div class="avatar-small" style="width: 32px; height: 32px; background: var(--gray-300); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                Мария Петрова
+                            </div>
+                        </td>
+                        <td>25</td>
+                        <td>12.03.2024</td>
+                        <td>2 дня назад</td>
+                        <td>
+                            <button class="btn btn-outline" style="padding: 4px 12px; font-size: 14px;">
+                                <i class="fas fa-comment"></i> Чат
+                            </button>
+                        </td>
+                    </tr>
+                    <!-- Еще клиенты... -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Таб Приглашения -->
+        <div id="invites" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Пригласительные ссылки</h3>
+                    <button class="btn btn-primary" onclick="createInvite()">
+                        <i class="fas fa-plus"></i> Создать новую
+                    </button>
+                </div>
+                <div class="invites-list">
+                    <div class="invite-item" style="background: var(--gray-100); padding: 20px; border-radius: var(--radius); margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <div>
+                                <div style="font-weight: 600;">Ссылка #1</div>
+                                <div style="font-size: 14px; color: var(--gray-600);">Создана: 10.03.2024</div>
+                            </div>
+                            <span class="badge" style="background: var(--success-color); color: white; padding: 4px 12px; border-radius: 20px;">Активна</span>
+                        </div>
+                        <div class="invite-link" style="background: white; padding: 12px; border-radius: var(--radius); border: 1px dashed var(--primary-color); margin: 10px 0; word-break: break-all;">
+                            http://psyconnect.com/client-register.html?invite=abc123def456
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 14px;">
+                                <i class="fas fa-copy"></i> Копировать
+                            </button>
+                            <button class="btn btn-outline" style="padding: 6px 12px; font-size: 14px;">
+                                <i class="fas fa-qrcode"></i> QR-код
+                            </button>
+                            <button class="btn btn-danger" style="padding: 6px 12px; font-size: 14px; margin-left: auto;">
+                                <i class="fas fa-trash"></i> Удалить
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Таб Чат -->
+        <div id="chat" class="tab-content">
+            <div class="chat-container">
+                <div class="chat-sidebar">
+                    <div style="margin-bottom: 20px;">
+                        <input type="text" placeholder="Поиск в чатах..." style="width: 100%; padding: 10px; border: 1px solid var(--gray-300); border-radius: var(--radius);">
+                    </div>
+                    <div class="chat-list">
+                        <div class="chat-item active" style="display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--gray-100); border-radius: var(--radius); margin-bottom: 10px;">
+                            <div class="chat-avatar" style="width: 40px; height: 40px; background: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white;">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="chat-info" style="flex: 1;">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <div class="chat-name" style="font-weight: 600;">Мария Петрова</div>
+                                    <div class="chat-time" style="font-size: 12px; color: var(--gray-600);">15:30</div>
+                                </div>
+                                <div class="chat-preview" style="font-size: 14px; color: var(--gray-600); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    Спасибо за сегодняшнюю сессию!
+                                </div>
+                            </div>
+                            <div class="chat-unread" style="width: 20px; height: 20px; background: var(--primary-color); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px;">
+                                3
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-main">
+                    <div class="chat-header" style="padding: 15px; border-bottom: 1px solid var(--gray-200);">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div class="avatar" style="width: 40px; height: 40px; background: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white;">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div>
+                                <div style="font-weight: 600;">Мария Петрова</div>
+                                <div style="font-size: 14px; color: var(--gray-600);">Онлайн</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chat-messages">
+                        <div class="message received">
+                            <div class="message-time" style="font-size: 12px; opacity: 0.7; margin-bottom: 5px;">Мария, 15:25</div>
+                            Добрый день! Как вы себя чувствуете после нашей последней сессии?
+                        </div>
+                        <div class="message sent">
+                            <div class="message-time" style="font-size: 12px; opacity: 0.7; margin-bottom: 5px;">Вы, 15:28</div>
+                            Добрый день! Мне стало значительно легче, спасибо!
+                        </div>
+                        <div class="message received">
+                            <div class="message-time" style="font-size: 12px; opacity: 0.7; margin-bottom: 5px;">Мария, 15:30</div>
+                            Спасибо за сегодняшнюю сессию! Вы очень помогли.
+                        </div>
+                    </div>
+
+                    <div class="chat-input">
+                        <input type="text" placeholder="Введите сообщение..." style="flex: 1; padding: 12px; border: 1px solid var(--gray-300); border-radius: var(--radius);">
+                        <button class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="script.js"></script>
+<script>
+    // Инициализация табов
+    document.querySelectorAll('.sidebar-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            if (this.getAttribute('href') === '#') return;
+
+            e.preventDefault();
+
+            // Убрать активный класс у всех ссылок
+            document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+            // Добавить активный класс текущей
+            this.classList.add('active');
+
+            // Скрыть все табы
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            // Показать выбранный таб
+            const tabId = this.getAttribute('href').substring(1);
+            document.getElementById(tabId).classList.add('active');
+        });
+    });
+
+    // Функция создания инвайта
+    function createInvite() {
+        // Заглушка для API
+        showStatus('Создаем пригласительную ссылку...', 'info');
+
+        setTimeout(() => {
+            // Мок ссылка
+            const mockInviteLink = 'http://localhost:8000/client-register.html?invite=' + Math.random().toString(36).substr(2, 9);
+
+            // Показать ссылку в модальном окне
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0,0,0,0.5);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 10000;
+                `;
+
+            modal.innerHTML = `
+                    <div style="background: white; padding: 30px; border-radius: 12px; max-width: 500px; width: 90%;">
+                        <h3 style="margin-bottom: 20px;">Пригласительная ссылка создана!</h3>
+                        <p style="margin-bottom: 15px; color: var(--gray-600);">Отправьте эту ссылку вашему клиенту:</p>
+                        <div style="background: var(--gray-100); padding: 15px; border-radius: 8px; margin-bottom: 20px; word-break: break-all;">
+                            ${mockInviteLink}
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn btn-secondary" onclick="navigator.clipboard.writeText('${mockInviteLink}'); showStatus('Ссылка скопирована!', 'success');">
+                                <i class="fas fa-copy"></i> Копировать
+                            </button>
+                            <button class="btn btn-primary" onclick="this.closest('div[style*="position: fixed"]').remove()">
+                                Готово
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+            document.body.appendChild(modal);
+
+            showStatus('Пригласительная ссылка создана', 'success');
+        }, 1000);
+    }
+</script>
+</body>
+</html>
