@@ -1,5 +1,6 @@
 package com.psychology.controller;
 
+import com.psychology.dto.ClientDTO;
 import com.psychology.model.entity.Client;
 import com.psychology.model.entity.Psychologist;
 import com.psychology.service.ClientManagementService;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/clients")
@@ -22,12 +24,22 @@ public class ClientManagementController {
 
     private final ClientManagementService clientManagementService;
 
-    // Получить всех клиентов психолога
     @GetMapping
     @PreAuthorize("hasRole('PSYCHOLOGIST')")
-    public ResponseEntity<List<Client>> getAllClients(@AuthenticationPrincipal Psychologist psychologist) {
+    public ResponseEntity<List<ClientDTO>> getAllClients(@AuthenticationPrincipal Psychologist psychologist) {
         List<Client> clients = clientManagementService.getAllClients(psychologist);
-        return ResponseEntity.ok(clients);
+        List<ClientDTO> dtos = clients.stream()
+                .map(c -> {
+                    ClientDTO dto = new ClientDTO();
+                    dto.setId(c.getId());
+                    dto.setFullName(c.getFullName());
+                    dto.setAge(c.getAge());
+                    dto.setPhone(c.getPhone());
+                    // Не включаем psychologist или включаем только ID
+                    return dto;
+                })
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
     }
 
     // Получить клиента по ID

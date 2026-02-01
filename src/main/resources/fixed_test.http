@@ -1,0 +1,63 @@
+### Базовые тесты
+GET http://localhost:8080/api/v1/debug/health
+
+///eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzkxNjEyMzQ1NjAiLCJpYXQiOjE3Njk5NDIxMTMsImV4cCI6MTc2OTk0MzkxM30.PE5liG3aDX0HI9wMDTCyaEwmC8QA95uDvuAHUTiCcNU
+//eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzk5OTIyMjIyMjIiLCJpYXQiOjE3Njk5NDIxNTYsImV4cCI6MTc2OTk0Mzk1Nn0.N6vv0mQKhboOM3IbFogxI2q-l6Ui7P0O3HDKNVe3ge4
+### Отправить OTP (заменить +79991234567 на ваш номер)
+POST http://localhost:8080/api/v1/auth/send-otp
+Content-Type: application/json
+
+{
+  "phone": "+79992222222"
+}
+### Войти как существующий психолог
+POST http://localhost:8080/api/v1/auth/verify-otp
+Content-Type: application/json
+
+{
+  "phone": "+79161234560",
+  "otp": "037143"
+}
+> {%
+    client.global.set("psychologist_token", response.body.accessToken);
+    client.global.set("psychologist_id", response.body.userId);
+%}
+
+### Войти как существующий клиент
+POST http://localhost:8080/api/v1/auth/verify-otp
+Content-Type: application/json
+
+{
+  "phone": "+79992222222",
+  "otp": "561425"
+}
+> {%
+    client.global.set("client_token", response.body.accessToken);
+    client.global.set("client_id", response.body.userId);
+%}
+
+### Упрощенный тест чата (сообщение без attachment)
+POST http://localhost:8080/api/v1/chat/send
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzkxNjEyMzQ1NjAiLCJpYXQiOjE3Njk5NDIxMTMsImV4cCI6MTc2OTk0MzkxM30.PE5liG3aDX0HI9wMDTCyaEwmC8QA95uDvuAHUTiCcNU
+Content-Type: application/json
+
+{
+  "receiverId": 12,
+  "content": "Тест без вложения"
+}
+
+### Упрощенная рекомендация (без categories)
+POST http://localhost:8080/api/v1/recommendations
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzkxNjEyMzQ1NjAiLCJpYXQiOjE3Njk5NDIxMTMsImV4cCI6MTc2OTk0MzkxM30.PE5liG3aDX0HI9wMDTCyaEwmC8QA95uDvuAHUTiCcNU
+Content-Type: application/json
+
+{
+  "clientId": 12,
+  "title": "Простая рекомендация",
+  "content": "Выполняйте тестовое задание",
+  "priority": 3
+}
+
+### Тест клиентов с кастомным DTO
+GET http://localhost:8080/api/v1/clients
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzkxNjEyMzQ1NjAiLCJpYXQiOjE3Njk5NDIxMTMsImV4cCI6MTc2OTk0MzkxM30.PE5liG3aDX0HI9wMDTCyaEwmC8QA95uDvuAHUTiCcNU

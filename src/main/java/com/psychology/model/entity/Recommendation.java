@@ -44,7 +44,7 @@ public class Recommendation {
     @Column(nullable = false)
     private boolean completed = false;
 
-    @Column(name = "completed_by_client")
+    @Column(name = "completed_by_client", nullable = false)
     private boolean completedByClient = false;
 
     @Column(name = "completed_at")

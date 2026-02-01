@@ -2,6 +2,8 @@ package com.psychology.model.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonView;
+import com.psychology.dto.Views;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -22,7 +24,8 @@ public class Client extends User {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "psychologist_id", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "clients", "invites"})
+    @JsonView(Views.Internal.class)
+    @JsonIgnoreProperties(value = {"psychologist.clients", "psychologist.invites"}, allowSetters = true)
     private Psychologist psychologist;
 
     @Column(name = "linked_at")

@@ -20,7 +20,7 @@ POST http://localhost:8080/api/v1/auth/send-otp
 Content-Type: application/json
 
 {
-  "phone": "+79992222222"
+  "phone": "+79991111111"
 }
 
 ### Проверить OTP (заменить код из логов)
@@ -41,7 +41,7 @@ POST http://localhost:8080/api/v1/auth/refresh
 
 ### Создать приглашение (требуется токен психолога)
 POST http://localhost:8080/api/v1/invites
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzkxNjEyMzQ1NjAiLCJpYXQiOjE3Njk5NDA0ODcsImV4cCI6MTc2OTk0MjI4N30._u57Kyx5Th7eXrGoEh2bv45DbH8TsARfSx6lkk3OWUo
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzk5OTIyMjIyMjIiLCJpYXQiOjE3Njk5NDM0NjYsImV4cCI6MTc2OTk0NTI2Nn0.IWpsfmHdssLSm2NQ4RMpk7DQQkXr5DsaObn9O-EJZv4
 
 ### Проверить приглашение (публичный)
 GET http://localhost:8080/api/v1/invites/validate/wSMmnD4W8o7RmY8np3D0j961wQKU26Pv
@@ -59,8 +59,8 @@ POST http://localhost:8080/api/v1/auth/psychologist/register
 Content-Type: application/json
 
 {
-  "phone": "+79991111111",
-  "otp": "625658",
+  "phone": "+79992222222",
+  "otp": "402970",
   "fullName": "Иван Иванов",
   "email": "psychologist@example.com",
   "education": "МГУ, психологический факультет",
@@ -70,12 +70,12 @@ Content-Type: application/json
 }
 
 ### Регистрация клиента по инвайту
-POST http://localhost:8080/api/v1/auth/client/register?inviteToken=wSMmnD4W8o7RmY8np3D0j961wQKU26Pv
+POST http://localhost:8080/api/v1/auth/client/register?inviteToken=MRL3r6bsnsPz3XNG2WwayydL9soBw6Bb
 Content-Type: application/json
 
 {
-  "phone": "+79992222222",
-  "otp": "428514",
+  "phone": "+79991111111",
+  "otp": "612558",
   "fullName": "Мария Петрова",
   "age": 30,
   "photoUrl": "https://example.com/client.jpg"
@@ -87,7 +87,7 @@ Content-Type: application/json
 
 ### Получить текущий профиль
 GET http://localhost:8080/api/v1/profile
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzk5OTIyMjIyMjIiLCJpYXQiOjE3Njk5NDA2MjcsImV4cCI6MTc2OTk0MjQyN30.7XIxFghZ4OnVFVesLB-zJwtdgh3LtllZTpetABYHJ1Q
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzk5OTExMTExMTEiLCJpYXQiOjE3Njk5NDM1NjAsImV4cCI6MTc2OTk0NTM2MH0.0PcfvuiYljtfJH1eCHYgm-GjXc4HgMD6_ngptD9Q7MA
 
 ### Обновить профиль психолога
 PUT http://localhost:8080/api/v1/profile/psychologist
@@ -118,18 +118,18 @@ Content-Type: application/json
 
 ### Отправить сообщение (REST)
 POST http://localhost:8080/api/v1/chat/send
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzkxNjEyMzQ1NjAiLCJpYXQiOjE3Njk5NDA0ODcsImV4cCI6MTc2OTk0MjI4N30._u57Kyx5Th7eXrGoEh2bv45DbH8TsARfSx6lkk3OWUo
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzk5OTIyMjIyMjIiLCJpYXQiOjE3Njk5NDM0NjYsImV4cCI6MTc2OTk0NTI2Nn0.IWpsfmHdssLSm2NQ4RMpk7DQQkXr5DsaObn9O-EJZv4
 Content-Type: application/json
 
 {
-  "receiverId": 12,
+  "receiverId": 2,
   "content": "Привет! Как дела?",
   "attachmentUrl": null
 }
 
 ### Получить переписку с пользователем
-GET http://localhost:8080/api/v1/chat/conversation/12
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzkxNjEyMzQ1NjAiLCJpYXQiOjE3Njk5NDA0ODcsImV4cCI6MTc2OTk0MjI4N30._u57Kyx5Th7eXrGoEh2bv45DbH8TsARfSx6lkk3OWUo
+GET http://localhost:8080/api/v1/chat/conversation/2
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzk5OTIyMjIyMjIiLCJpYXQiOjE3Njk5NDM0NjYsImV4cCI6MTc2OTk0NTI2Nn0.IWpsfmHdssLSm2NQ4RMpk7DQQkXr5DsaObn9O-EJZv4
 
 ### Получить последние сообщения (за 7 дней)
 GET http://localhost:8080/api/v1/chat/recent
@@ -141,11 +141,11 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzkxNjEyMzQ1NjAiLCJpYXQiO
 
 ### Получить непрочитанные сообщения
 GET http://localhost:8080/api/v1/chat/unread
-Authorization: Bearer {{token}}
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzk5OTExMTExMTEiLCJpYXQiOjE3Njk5NDM1NjAsImV4cCI6MTc2OTk0NTM2MH0.0PcfvuiYljtfJH1eCHYgm-GjXc4HgMD6_ngptD9Q7MA
 
 ### Пометить сообщение как прочитанное
-POST http://localhost:8080/api/v1/chat/read/{{message_id}}
-Authorization: Bearer {{token}}
+POST http://localhost:8080/api/v1/chat/read/1
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzk5OTExMTExMTEiLCJpYXQiOjE3Njk5NDM1NjAsImV4cCI6MTc2OTk0NTM2MH0.0PcfvuiYljtfJH1eCHYgm-GjXc4HgMD6_ngptD9Q7MA
 
 ### ============================================
 ### 7. СЕАНСЫ
@@ -153,11 +153,11 @@ Authorization: Bearer {{token}}
 
 ### Психолог создает сеанс
 POST http://localhost:8080/api/v1/sessions
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzkxNjEyMzQ1NjAiLCJpYXQiOjE3Njk5NDA0ODcsImV4cCI6MTc2OTk0MjI4N30._u57Kyx5Th7eXrGoEh2bv45DbH8TsARfSx6lkk3OWUo
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzk5OTIyMjIyMjIiLCJpYXQiOjE3Njk5NDM0NjYsImV4cCI6MTc2OTk0NTI2Nn0.IWpsfmHdssLSm2NQ4RMpk7DQQkXr5DsaObn9O-EJZv4
 Content-Type: application/json
 
 {
-  "clientId": 12,
+  "clientId": 2,
   "scheduledAt": "2026-12-25T15:00:00",
   "durationMinutes": 50,
   "description": "Первая консультация"
@@ -165,7 +165,7 @@ Content-Type: application/json
 
 ### Получить сеансы психолога
 GET http://localhost:8080/api/v1/sessions/psychologist?from=2024-01-01T00:00:00&to=2027-12-31T23:59:59
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzkxNjEyMzQ1NjAiLCJpYXQiOjE3Njk5NDA0ODcsImV4cCI6MTc2OTk0MjI4N30._u57Kyx5Th7eXrGoEh2bv45DbH8TsARfSx6lkk3OWUo
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzk5OTIyMjIyMjIiLCJpYXQiOjE3Njk5NDM0NjYsImV4cCI6MTc2OTk0NTI2Nn0.IWpsfmHdssLSm2NQ4RMpk7DQQkXr5DsaObn9O-EJZv4
 
 ### Получить сеансы клиента
 GET http://localhost:8080/api/v1/sessions/client
@@ -181,7 +181,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzkxNjEyMzQ1NjAiLCJpYXQiO
 
 ### Клиент создает запись в дневнике
 POST http://localhost:8080/api/v1/journal
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzk5OTIyMjIyMjIiLCJpYXQiOjE3Njk5NDA2MjcsImV4cCI6MTc2OTk0MjQyN30.7XIxFghZ4OnVFVesLB-zJwtdgh3LtllZTpetABYHJ1Q
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzk5OTExMTExMTEiLCJpYXQiOjE3Njk5NDM1NjAsImV4cCI6MTc2OTk0NTM2MH0.0PcfvuiYljtfJH1eCHYgm-GjXc4HgMD6_ngptD9Q7MA
 Content-Type: application/json
 
 {
@@ -212,21 +212,21 @@ Authorization: Bearer {{client_token}}
 
 ### Психолог создает рекомендацию для клиента
 POST http://localhost:8080/api/v1/recommendations
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzkxNjEyMzQ1NjAiLCJpYXQiOjE3Njk5NDA0ODcsImV4cCI6MTc2OTk0MjI4N30._u57Kyx5Th7eXrGoEh2bv45DbH8TsARfSx6lkk3OWUo
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzk5OTIyMjIyMjIiLCJpYXQiOjE3Njk5NDM0NjYsImV4cCI6MTc2OTk0NTI2Nn0.IWpsfmHdssLSm2NQ4RMpk7DQQkXr5DsaObn9O-EJZv4
 Content-Type: application/json
 
 {
-  "clientId": 12,
+  "clientId": 2,
   "title": "Техники релаксации",
   "content": "Выполняйте дыхательные упражнения 2 раза в день",
-  "deadline": "2024-12-31T23:59:59",
+  "deadline": "2026-12-31T23:59:59",
   "priority": 5,
   "categories": ["релаксация", "дыхание"]
 }
 
 ### Клиент получает свои рекомендации
 GET http://localhost:8080/api/v1/recommendations
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzk5OTIyMjIyMjIiLCJpYXQiOjE3Njk5NDA2MjcsImV4cCI6MTc2OTk0MjQyN30.7XIxFghZ4OnVFVesLB-zJwtdgh3LtllZTpetABYHJ1Q
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzk5OTExMTExMTEiLCJpYXQiOjE3Njk5NDM1NjAsImV4cCI6MTc2OTk0NTM2MH0.0PcfvuiYljtfJH1eCHYgm-GjXc4HgMD6_ngptD9Q7MA
 
 ### Психолог получает рекомендации для клиента
 GET http://localhost:8080/api/v1/recommendations/client/12
@@ -242,7 +242,7 @@ Authorization: Bearer {{client_token}}
 
 ### Получить уведомления
 GET http://localhost:8080/api/v1/notifications?page=0&size=20
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzkxNjEyMzQ1NjAiLCJpYXQiOjE3Njk5NDA0ODcsImV4cCI6MTc2OTk0MjI4N30._u57Kyx5Th7eXrGoEh2bv45DbH8TsARfSx6lkk3OWUo
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIrNzk5OTExMTExMTEiLCJpYXQiOjE3Njk5NDM1NjAsImV4cCI6MTc2OTk0NTM2MH0.0PcfvuiYljtfJH1eCHYgm-GjXc4HgMD6_ngptD9Q7MA
 
 ### Получить непрочитанные уведомления
 GET http://localhost:8080/api/v1/notifications/unread

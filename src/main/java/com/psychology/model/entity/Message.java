@@ -28,7 +28,7 @@ public class Message {
     @Column(name = "attachment_url")
     private String attachmentUrl;
 
-    @Column(name = "is_read")
+    @Column(name = "is_read", nullable = false)
     private boolean read = false;
 
     @CreationTimestamp

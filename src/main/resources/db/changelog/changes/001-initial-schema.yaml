@@ -4,69 +4,93 @@ databaseChangeLog:
       id: 10
       author: psychology
       changes:
-        - createTable:
-            tableName: notifications
-            columns:
-              - column:
-                  name: id
-                  type: BIGINT
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: user_id
-                  type: BIGINT
-                  constraints:
-                    nullable: false
-                    foreignKeyName: fk_notification_user
-                    references: users(id)
-                    onDelete: CASCADE
-              - column:
-                  name: type
-                  type: VARCHAR(50)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: title
-                  type: VARCHAR(200)
-              - column:
-                  name: message
-                  type: TEXT
-              - column:
-                  name: is_read
-                  type: BOOLEAN
-                  defaultValueBoolean: false
-              - column:
-                  name: related_entity_id
-                  type: BIGINT
-              - column:
-                  name: related_entity_type
-                  type: VARCHAR(50)
-              - column:
-                  name: created_at
-                  type: TIMESTAMP
-                  defaultValueComputed: CURRENT_TIMESTAMP
+  # Для messages
+  - createTable:
+      tableName: messages
+      columns:
+        - column:
+            name: id
+            type: BIGINT
+            autoIncrement: true
+            constraints:
+              primaryKey: true
+              nullable: false
+        - column:
+            name: sender_id
+            type: BIGINT
+            constraints:
+              nullable: false
+              foreignKeyName: fk_message_sender
+              references: users(id)
+        - column:
+            name: receiver_id
+            type: BIGINT
+            constraints:
+              nullable: false
+              foreignKeyName: fk_message_receiver
+              references: users(id)
+        - column:
+            name: content
+            type: TEXT
+            constraints:
+              nullable: false
+        - column:
+            name: attachment_url
+            type: VARCHAR(500)
+        - column:
+            name: is_read  # Изменено с read на is_read
+            type: BOOLEAN
+            nullable: false
+            defaultValueBoolean: false
+        - column:
+            name: sent_at
+            type: TIMESTAMP
+            defaultValueComputed: CURRENT_TIMESTAMP
 
-              - createIndex:
-                  tableName: notifications
-                  columns:
-                    - column:
-                        name: user_id
-                    - column:
-                        name: is_read
-                    - column:
-                        name: created_at
-                  indexName: idx_notifications_user_read
-
-              - createIndex:
-                  tableName: notifications
-                  columns:
-                    - column:
-                        name: user_id
-                    - column:
-                        name: type
-                  indexName: idx_notifications_user_type
+  # Для notifications
+  - createTable:
+      tableName: notifications
+      columns:
+        - column:
+            name: id
+            type: BIGINT
+            autoIncrement: true
+            constraints:
+              primaryKey: true
+              nullable: false
+        - column:
+            name: user_id
+            type: BIGINT
+            constraints:
+              nullable: false
+              foreignKeyName: fk_notification_user
+              references: users(id)
+        - column:
+            name: type
+            type: VARCHAR(50)
+            constraints:
+              nullable: false
+        - column:
+            name: title
+            type: VARCHAR(200)
+        - column:
+            name: message
+            type: TEXT
+        - column:
+            name: is_read  # Изменено с read на is_read
+            type: BOOLEAN
+            nullable: false
+            defaultValueBoolean: false
+        - column:
+            name: related_entity_id
+            type: BIGINT
+        - column:
+            name: related_entity_type
+            type: VARCHAR(50)
+        - column:
+            name: created_at
+            type: TIMESTAMP
+            defaultValueComputed: CURRENT_TIMESTAMP
         - createTable:
             tableName: uploaded_files
             columns:
