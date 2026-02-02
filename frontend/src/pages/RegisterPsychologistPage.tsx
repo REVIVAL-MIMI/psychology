@@ -58,60 +58,76 @@ export default function RegisterPsychologistPage() {
   };
 
   return (
-    <div className="card">
-      <h2>Регистрация психолога</h2>
-      <p className="muted">Сначала подтвердите номер, затем заполните профиль.</p>
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-header">
+          <div className="pill">Психолог</div>
+          <h2>Создание профиля</h2>
+          <p className="muted">Подтвердите номер и заполните анкету специалиста.</p>
+        </div>
 
-      <div className="form">
-        <label>
-          Номер телефона
-          <input type="tel" value={form.phone} onChange={update("phone")} placeholder="+79990000000" />
-        </label>
+        <div className="form">
+          <label>
+            Номер телефона
+            <input type="tel" value={form.phone} onChange={update("phone")} placeholder="+79990000000" />
+          </label>
 
-        {stage === "profile" && (
-          <>
-            <label>
-              Код из SMS
-              <input value={form.otp} onChange={update("otp")} placeholder="123456" />
-            </label>
-            <label>
-              ФИО
-              <input value={form.fullName} onChange={update("fullName")} />
-            </label>
-            <label>
-              Email
-              <input type="email" value={form.email} onChange={update("email")} />
-            </label>
-            <label>
-              Образование
-              <input value={form.education} onChange={update("education")} />
-            </label>
-            <label>
-              Специализация
-              <input value={form.specialization} onChange={update("specialization")} />
-            </label>
-            <label>
-              Описание
-              <textarea value={form.description} onChange={update("description")} rows={4} />
-            </label>
-            <label>
-              Фото (URL)
-              <input value={form.photoUrl} onChange={update("photoUrl")} placeholder="https://" />
-            </label>
-          </>
-        )}
+          {stage === "profile" && (
+            <>
+              <label>
+                Код из SMS
+                <input value={form.otp} onChange={update("otp")} placeholder="123456" />
+              </label>
+              <label>
+                ФИО
+                <input value={form.fullName} onChange={update("fullName")} />
+              </label>
+              <label>
+                Email
+                <input type="email" value={form.email} onChange={update("email")} />
+              </label>
+              <label>
+                Образование
+                <input value={form.education} onChange={update("education")} />
+              </label>
+              <label>
+                Специализация
+                <input value={form.specialization} onChange={update("specialization")} />
+              </label>
+              <label>
+                Описание
+                <textarea value={form.description} onChange={update("description")} rows={4} />
+              </label>
+              <label>
+                Фото (URL)
+                <input value={form.photoUrl} onChange={update("photoUrl")} placeholder="https://" />
+              </label>
+            </>
+          )}
 
-        {error && <div className="error">{error}</div>}
+          {error && <div className="error">{error}</div>}
 
-        {stage === "phone" ? (
-          <button className="button" onClick={sendOtp} disabled={loading || !form.phone}>
-            {loading ? "Отправляем…" : "Отправить код"}
-          </button>
-        ) : (
-          <button className="button" onClick={register} disabled={loading || !form.otp || !form.fullName || !form.email}>
-            {loading ? "Создаем…" : "Создать профиль"}
-          </button>
-        )}
+          {stage === "phone" ? (
+            <button className="button" onClick={sendOtp} disabled={loading || !form.phone}>
+              {loading ? "Отправляем…" : "Отправить код"}
+            </button>
+          ) : (
+            <button className="button" onClick={register} disabled={loading || !form.otp || !form.fullName || !form.email}>
+              {loading ? "Создаем…" : "Создать профиль"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="auth-aside">
+        <div className="aside-card">
+          <h3>Проверка профиля</h3>
+          <p>После отправки анкеты профиль проходит верификацию администратором.</p>
+        </div>
+        <div className="aside-card">
+          <h3>Рабочее место</h3>
+          <p>Клиенты, расписание, рекомендации и чат — в одной панели.</p>
+        </div>
       </div>
     </div>
   );

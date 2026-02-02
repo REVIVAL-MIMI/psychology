@@ -7,12 +7,16 @@ export default function ClientDetailPage() {
   const [client, setClient] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
   const [activity, setActivity] = useState<any>(null);
+  const [journal, setJournal] = useState<any[]>([]);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
 
   useEffect(() => {
     if (!id) return;
     api.get(`/clients/${id}`).then(setClient);
     api.get(`/clients/${id}/stats`).then(setStats);
     api.get(`/clients/${id}/activity`).then(setActivity);
+    api.get(`/journal/client/${id}`).then(setJournal).catch(() => null);
+    api.get(`/recommendations/client/${id}`).then(setRecommendations).catch(() => null);
   }, [id]);
 
   return (
@@ -56,6 +60,39 @@ export default function ClientDetailPage() {
           )}
         </div>
       )}
+
+      <div className="grid-2">
+        <div className="card">
+          <h3>Дневник клиента</h3>
+          <ul className="list">
+            {journal.map((entry) => (
+              <li key={entry.id} className="list-row">
+                <div>
+                  <div className="muted">{new Date(entry.createdAt ?? entry.date).toLocaleString()}</div>
+                  <div>{entry.content}</div>
+                </div>
+                <span className="badge">{entry.mood ?? "—"}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="card">
+          <h3>Рекомендации</h3>
+          <ul className="list">
+            {recommendations.map((rec) => (
+              <li key={rec.id} className="list-row">
+                <div>
+                  <div className="card-title">{rec.title}</div>
+                  <div className="muted">{rec.content}</div>
+                </div>
+                <span className={`badge ${rec.completed ? "COMPLETED" : "SCHEDULED"}`}>
+                  {rec.completed ? "Выполнена" : "Активна"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }

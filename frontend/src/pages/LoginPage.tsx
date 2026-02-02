@@ -44,44 +44,60 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="card">
-      <h2>Вход по номеру телефона</h2>
-      <p className="muted">Введите номер телефона, получите код и подтвердите вход.</p>
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-header">
+          <div className="pill">Вход</div>
+          <h2>Добро пожаловать</h2>
+          <p className="muted">Введите номер и подтвердите одноразовым кодом.</p>
+        </div>
 
-      <div className="form">
-        <label>
-          Номер телефона
-          <input
-            type="tel"
-            placeholder="+79990000000"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
-        </label>
-
-        {stage === "otp" && (
+        <div className="form">
           <label>
-            Код из SMS
+            Номер телефона
             <input
-              type="text"
-              placeholder="123456"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
+              type="tel"
+              placeholder="+79990000000"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
             />
           </label>
-        )}
 
-        {error && <div className="error">{error}</div>}
+          {stage === "otp" && (
+            <label>
+              Код из SMS
+              <input
+                type="text"
+                placeholder="123456"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+              />
+            </label>
+          )}
 
-        {stage === "phone" ? (
-          <button className="button" onClick={sendOtp} disabled={loading || !phone}>
-            {loading ? "Отправляем…" : "Отправить код"}
-          </button>
-        ) : (
-          <button className="button" onClick={verifyOtp} disabled={loading || !otp}>
-            {loading ? "Проверяем…" : "Войти"}
-          </button>
-        )}
+          {error && <div className="error">{error}</div>}
+
+          {stage === "phone" ? (
+            <button className="button" onClick={sendOtp} disabled={loading || !phone}>
+              {loading ? "Отправляем…" : "Отправить код"}
+            </button>
+          ) : (
+            <button className="button" onClick={verifyOtp} disabled={loading || !otp}>
+              {loading ? "Проверяем…" : "Войти"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="auth-aside">
+        <div className="aside-card">
+          <h3>Без паролей</h3>
+          <p>Быстрый доступ с OTP‑кодом, меньше риска, больше спокойствия.</p>
+        </div>
+        <div className="aside-card">
+          <h3>Конфиденциальность</h3>
+          <p>Данные доступны только вам и вашему специалисту.</p>
+        </div>
       </div>
     </div>
   );
