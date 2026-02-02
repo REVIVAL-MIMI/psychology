@@ -1,14 +1,100 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
+import { clearStoredAuth, getStoredAuth, setRefreshCookie, setStoredAuth } from "./storage";
 
-type HealthResponse = {
-  status: string;
-  time?: string;
+const API_PREFIX = "/api/v1";
+
+export class ApiError extends Error {
+  status: number;
+  payload?: unknown;
+  constructor(message: string, status: number, payload?: unknown) {
+    super(message);
+    this.status = status;
+    this.payload = payload;
+  }
+}
+
+type RequestOptions = {
+  method?: "GET" | "POST" | "PUT" | "DELETE";
+  body?: unknown;
+  headers?: Record<string, string>;
+  isForm?: boolean;
+  skipAuth?: boolean;
 };
 
-export async function getHealth(): Promise<HealthResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/debug/health`);
-  if (!response.ok) {
-    throw new Error(`API error: ${response.status}`);
+async function request<T>(path: string, options: RequestOptions = {}, retry = true): Promise<T> {
+  const auth = getStoredAuth();
+  const headers: Record<string, string> = {
+    ...(options.isForm ? {} : { "Content-Type": "application/json" }),
+    ...(options.headers ?? {})
+  };
+
+  if (!options.skipAuth && auth?.accessToken) {
+    headers.Authorization = `Bearer ${auth.accessToken}`;
   }
-  return response.json();
+
+  const response = await fetch(`${API_PREFIX}${path}`,
+    {
+      method: options.method ?? "GET",
+      headers,
+      body: options.body ? (options.isForm ? (options.body as BodyInit) : JSON.stringify(options.body)) : undefined,
+      credentials: "include"
+    }
+  );
+
+  if (response.status === 401 && retry) {
+    const refreshed = await tryRefresh();
+    if (refreshed) {
+      return request<T>(path, options, false);
+    }
+  }
+
+  if (!response.ok) {
+    let payload: unknown = undefined;
+    try {
+      payload = await response.json();
+    } catch {
+      payload = await response.text();
+    }
+    throw new ApiError(`Request failed: ${response.status}`, response.status, payload);
+  }
+
+  const contentType = response.headers.get("content-type");
+  if (contentType && contentType.includes("application/json")) {
+    return response.json() as Promise<T>;
+  }
+  return (await response.text()) as unknown as T;
 }
+
+async function tryRefresh(): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_PREFIX}/auth/refresh`, {
+      method: "POST",
+      credentials: "include"
+    });
+    if (!response.ok) return false;
+    const data = (await response.json()) as {
+      accessToken: string;
+      refreshToken: string;
+      userId: number;
+      userRole: "ROLE_CLIENT" | "ROLE_PSYCHOLOGIST" | "ROLE_ADMIN";
+      fullName: string;
+      phone: string;
+    };
+    setStoredAuth(data);
+    setRefreshCookie(data.refreshToken);
+    return true;
+  } catch {
+    clearStoredAuth();
+    return false;
+  }
+}
+
+export const api = {
+  get: <T>(path: string, options?: RequestOptions) => request<T>(path, { ...options, method: "GET" }),
+  post: <T>(path: string, body?: unknown, options?: RequestOptions) =>
+    request<T>(path, { ...options, method: "POST", body }),
+  put: <T>(path: string, body?: unknown, options?: RequestOptions) =>
+    request<T>(path, { ...options, method: "PUT", body }),
+  del: <T>(path: string, options?: RequestOptions) => request<T>(path, { ...options, method: "DELETE" }),
+  upload: <T>(path: string, formData: FormData) =>
+    request<T>(path, { method: "POST", body: formData, isForm: true })
+};
