@@ -133,8 +133,16 @@ export default function SessionsPage() {
         </div>
       )}
 
-      <div className="card">
-        <div className="filter-bar">
+      <div className="section">
+        <div className="section-header">
+          <div>
+            <div className="section-title">Список сеансов</div>
+            <div className="section-note">Ближайшие и прошедшие встречи</div>
+          </div>
+          <div className="section-meta">{sessions.length} записей</div>
+        </div>
+
+        <div className="filter-bar compact">
           <div className="filter-group">
             <label>
               С даты
@@ -159,28 +167,29 @@ export default function SessionsPage() {
           </div>
         </div>
 
-        <h3>Список сеансов</h3>
-        <ul className="list">
-          {sessions.map((session) => (
-            <li key={session.id} className="list-row">
-              <div>
-                <div className="card-title">
-                  {new Date(session.scheduledAt).toLocaleString()} — {session.client?.fullName ?? session.psychologist?.fullName ?? ""}
+        <div className="panel list-panel">
+          <ul className="list">
+            {sessions.map((session) => (
+              <li key={session.id} className="list-row">
+                <div>
+                  <div className="card-title">
+                    {new Date(session.scheduledAt).toLocaleString()} — {session.client?.fullName ?? session.psychologist?.fullName ?? ""}
+                  </div>
+                  <div className="muted">{session.description ?? ""}</div>
                 </div>
-                <div className="muted">{session.description ?? ""}</div>
-              </div>
-              <div className="row">
-                <span className={`badge ${session.status}`}>{session.status}</span>
-                {auth?.userRole === "ROLE_PSYCHOLOGIST" && (
-                  <button className="button ghost" onClick={() => openEdit(session)}>Изменить</button>
-                )}
-                {(session.status === "SCHEDULED" || session.status === "CONFIRMED") && (
-                  <button className="button ghost" onClick={() => cancelSession(session.id)}>Отменить</button>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
+                <div className="row">
+                  <span className={`badge ${session.status}`}>{session.status}</span>
+                  {auth?.userRole === "ROLE_PSYCHOLOGIST" && (
+                    <button className="button ghost" onClick={() => openEdit(session)}>Изменить</button>
+                  )}
+                  {(session.status === "SCHEDULED" || session.status === "CONFIRMED") && (
+                    <button className="button ghost" onClick={() => cancelSession(session.id)}>Отменить</button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
 
       {editingId && (

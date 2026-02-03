@@ -470,6 +470,45 @@ label {
   letter-spacing: -0.01em;
 }
 
+.section {
+  display: grid;
+  gap: 16px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.section-title {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.section-note {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.section-meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.panel {
+  background: var(--panel);
+  border-radius: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+}
+
+.panel.list-panel {
+  padding: 12px 16px;
+}
+
 .label {
   font-size: 11px;
   text-transform: uppercase;
@@ -708,6 +747,82 @@ label {
   gap: 12px;
 }
 
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.chat-title {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.chat-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.call-panel {
+  position: relative;
+  background: #101214;
+  border-radius: 16px;
+  padding: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.video-remote {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 12px;
+  background: #0b0d0f;
+}
+
+.video-local {
+  position: absolute;
+  width: 160px;
+  height: 110px;
+  right: 14px;
+  bottom: 14px;
+  border-radius: 10px;
+  object-fit: cover;
+  background: #0b0d0f;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+}
+
+.call-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 12, 14, 0.4);
+  display: grid;
+  place-items: center;
+  z-index: 40;
+  backdrop-filter: blur(6px);
+}
+
+.call-card {
+  background: var(--panel);
+  padding: 24px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 12px;
+  min-width: 280px;
+}
+
+.call-title {
+  font-weight: 600;
+  font-size: 18px;
+}
+
 .chat-messages {
   display: flex;
   flex-direction: column;
@@ -818,6 +933,13 @@ label {
   border-radius: 14px;
   background: var(--surface-soft);
   border: 1px solid var(--border);
+}
+
+.filter-bar.compact {
+  padding: 0;
+  border: none;
+  background: transparent;
+  margin-bottom: 0;
 }
 
 .filter-group {

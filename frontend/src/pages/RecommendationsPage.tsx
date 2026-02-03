@@ -173,8 +173,16 @@ export default function RecommendationsPage() {
         </>
       )}
 
-      <div className="card">
-        <div className="filter-bar">
+      <div className="section">
+        <div className="section-header">
+          <div>
+            <div className="section-title">Список рекомендаций</div>
+            <div className="section-note">Текущие и завершённые практики</div>
+          </div>
+          <div className="section-meta">{recommendations.length} записей</div>
+        </div>
+
+        <div className="filter-bar compact">
           <div className="filter-group">
             <label>
               Статус
@@ -207,33 +215,34 @@ export default function RecommendationsPage() {
           </div>
         </div>
 
-        <h3>Список рекомендаций</h3>
-        <ul className="list">
-          {recommendations.map((rec) => (
-            <li key={rec.id} className="list-row">
-              <div>
-                <div className="card-title">{rec.title}</div>
-                <div className="muted">{rec.content}</div>
-                <div className="tag-row">
-                  {rec.categories?.map((cat: string) => (
-                    <span key={cat} className="chip">{cat}</span>
-                  ))}
+        <div className="panel list-panel">
+          <ul className="list">
+            {recommendations.map((rec) => (
+              <li key={rec.id} className="list-row">
+                <div>
+                  <div className="card-title">{rec.title}</div>
+                  <div className="muted">{rec.content}</div>
+                  <div className="tag-row">
+                    {rec.categories?.map((cat: string) => (
+                      <span key={cat} className="chip">{cat}</span>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <div className="row">
-                {!rec.completed && (
-                  <button className="button ghost" onClick={() => markCompleted(rec.id, auth?.userRole ?? "")}>Отметить</button>
-                )}
-                {auth?.userRole === "ROLE_PSYCHOLOGIST" && (
-                  <button className="button ghost" onClick={() => removeRecommendation(rec.id)}>Удалить</button>
-                )}
-                <span className={`badge ${rec.completed ? "COMPLETED" : "SCHEDULED"}`}>
-                  {rec.completed ? "Выполнена" : "Активна"}
-                </span>
-              </div>
-            </li>
-          ))}
-        </ul>
+                <div className="row">
+                  {!rec.completed && (
+                    <button className="button ghost" onClick={() => markCompleted(rec.id, auth?.userRole ?? "")}>Отметить</button>
+                  )}
+                  {auth?.userRole === "ROLE_PSYCHOLOGIST" && (
+                    <button className="button ghost" onClick={() => removeRecommendation(rec.id)}>Удалить</button>
+                  )}
+                  <span className={`badge ${rec.completed ? "COMPLETED" : "SCHEDULED"}`}>
+                    {rec.completed ? "Выполнена" : "Активна"}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </div>
   );
