@@ -36,7 +36,7 @@ export default function DashboardPage() {
     <div className="page">
       <div className="page-header">
         <h1>Дашборд</h1>
-        <p className="muted">Сводка по вашей активности.</p>
+        <p className="muted">Ключевые ориентиры вашей практики.</p>
       </div>
 
       {error && <div className="error">{error}</div>}

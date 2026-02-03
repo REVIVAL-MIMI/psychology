@@ -1,6 +1,8 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
+declare const process: { env: Record<string, string | undefined> };
+
 const apiTarget = process.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 
 export default defineConfig({
@@ -13,7 +15,7 @@ export default defineConfig({
         target: apiTarget,
         changeOrigin: true
       },
-      "/ws": {
+      "/ws-chat": {
         target: apiTarget,
         ws: true,
         changeOrigin: true

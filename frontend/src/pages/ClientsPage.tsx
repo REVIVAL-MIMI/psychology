@@ -43,7 +43,9 @@ export default function ClientsPage() {
             <div className="card-title">{client.fullName}</div>
             <div className="muted">Возраст: {client.age ?? "—"}</div>
             <div className="muted">Телефон: {client.phone ?? "—"}</div>
-            <Link to={`/app/clients/${client.id}`} className="button ghost">Открыть</Link>
+            <div className="card-actions">
+              <Link to={`/app/clients/${client.id}`} className="button ghost">Открыть</Link>
+            </div>
           </div>
         ))}
       </div>

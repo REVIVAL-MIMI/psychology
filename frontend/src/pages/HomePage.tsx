@@ -5,15 +5,15 @@ export default function HomePage() {
     <div className="home">
       <section className="hero">
         <div className="hero-content">
-          <div className="pill">Платформа для психологов и клиентов</div>
+          <div className="pill">Практика и дисциплина</div>
           <h1>
-            Спокойное пространство
+            Тихое пространство
             <br />
-            для терапии онлайн
+            для устойчивой терапии
           </h1>
           <p>
-            Сеансы, рекомендации, дневник и чат — в одной защищенной среде.
-            Без лишнего, с фокусом на доверии и ритуале терапии.
+            Сеансы, рекомендации, дневник и чат — в ясной структуре.
+            Без шума, с опорой на ритм практики и доверие.
           </p>
           <div className="hero-actions">
             <Link to="/login" className="button">Войти</Link>
@@ -22,7 +22,7 @@ export default function HomePage() {
             </Link>
           </div>
           <div className="hero-note">
-            Клиенты регистрируются только по приглашению.
+            Доступ клиентам открывается только по приглашению специалиста.
           </div>
         </div>
         <div className="hero-visual">
@@ -30,7 +30,7 @@ export default function HomePage() {
             <div className="glass-title">Сегодня</div>
             <div className="glass-line">10:30 — Сеанс с клиентом</div>
             <div className="glass-line">12:00 — Запись в дневнике</div>
-            <div className="glass-line">15:00 — Рекомендация активна</div>
+            <div className="glass-line">15:00 — Рекомендация в работе</div>
           </div>
           <div className="orb orb-1" />
           <div className="orb orb-2" />
@@ -39,23 +39,23 @@ export default function HomePage() {
 
       <section className="feature-grid">
         <div className="feature-card">
-          <h3>Простой вход</h3>
-          <p>OTP по номеру телефона, без паролей и лишних шагов.</p>
+          <h3>Ясный вход</h3>
+          <p>OTP по номеру телефона — без паролей и лишних действий.</p>
         </div>
         <div className="feature-card">
-          <h3>Терапия в фокусе</h3>
-          <p>Планирование сеансов, заметки, история и рекомендации.</p>
+          <h3>Фокус на практике</h3>
+          <p>Сеансы, дневник и рекомендации — в одном спокойном ритме.</p>
         </div>
         <div className="feature-card">
-          <h3>Конфиденциальность</h3>
-          <p>Разделение ролей и доступ только к своим данным.</p>
+          <h3>Границы и доверие</h3>
+          <p>Доступ только к своим данным и строгие роли.</p>
         </div>
       </section>
 
       <section className="cta">
         <div>
-          <h2>Готовы начать?</h2>
-          <p>Создайте профиль психолога и начните работать с клиентами.</p>
+          <h2>Начать практику</h2>
+          <p>Создайте профиль и выстройте устойчивый рабочий ритм.</p>
         </div>
         <Link to="/register/psychologist" className="button">
           Создать профиль

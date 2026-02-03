@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../lib/auth";
+import { getStoredTheme, toggleTheme } from "../lib/theme";
 
 const navForRole = (role: string) => {
   if (role === "ROLE_PSYCHOLOGIST") {
@@ -34,37 +36,56 @@ const navForRole = (role: string) => {
 
 export default function AppLayout() {
   const { auth, logout } = useAuth();
+  const [theme, setTheme] = useState(getStoredTheme());
 
   if (!auth) return null;
   const nav = navForRole(auth.userRole);
 
+  const handleToggle = () => setTheme(toggleTheme());
+
   return (
-    <div className="app-layout">
-      <aside className="sidebar">
-        <div className="sidebar-top">
-          <div className="logo">Psychology</div>
-          <div className="role-chip">{auth.userRole.replace("ROLE_", "")}</div>
+    <div className="app-shell">
+      <header className="topbar">
+        <div className="brand">
+          <span className="brand-mark">Ψ</span>
+          <span>Psychology</span>
         </div>
-        <nav className="sidebar-nav">
-          {nav.map((item) => (
-            <NavLink key={item.to} to={item.to} className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }>
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="sidebar-footer">
-          <div className="user-block">
-            <div className="user-name">{auth.fullName}</div>
-            <div className="user-phone">{auth.phone}</div>
+        <div className="topbar-actions">
+          <div className="user-chip">
+            <div className="user-chip-name">{auth.fullName}</div>
+            <div className="user-chip-sub">{auth.userRole.replace("ROLE_", "")}</div>
           </div>
+          <button className="button ghost theme-toggle" onClick={handleToggle}>
+            {theme === "dark" ? "Свет" : "Тьма"}
+          </button>
           <button className="button" onClick={logout}>Выйти</button>
         </div>
-      </aside>
-      <main className="app-main">
-        <Outlet />
-      </main>
+      </header>
+
+      <div className="app-body">
+        <aside className="side-rail">
+          <div className="side-rail-header">
+            <div className="role-chip">{auth.userRole.replace("ROLE_", "")}</div>
+            <div className="user-meta">
+              <div className="user-name">{auth.fullName}</div>
+              <div className="user-phone">{auth.phone}</div>
+            </div>
+          </div>
+          <nav className="nav-stack">
+            {nav.map((item) => (
+              <NavLink key={item.to} to={item.to} className={({ isActive }) =>
+                isActive ? "nav-pill active" : "nav-pill"
+              }>
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
+        </aside>
+
+        <main className="app-content">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { connectWs, publishWs, subscribeWs } from "../lib/ws";
 
 export default function ChatPage() {
   const { auth } = useAuth();
@@ -9,9 +10,34 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [typing, setTyping] = useState(false);
+  const typingTimer = useRef<number | null>(null);
+  const lastTypingSent = useRef<number>(0);
+
+  const userId = useMemo(() => auth?.userId ?? null, [auth]);
+
+  const markMessagesRead = async (items: any[]) => {
+    if (!auth?.userId) return;
+    const unread = items.filter((m) =>
+      typeof m.id === "number" && m.receiverId === auth.userId && !m.read
+    );
+    if (!unread.length) return;
+
+    for (const msg of unread) {
+      const sent = publishWs("/app/chat.read", { messageId: msg.id });
+      if (!sent) {
+        try {
+          await api.post(`/chat/read/${msg.id}`);
+        } catch {
+          // ignore
+        }
+      }
+    }
+  };
 
   useEffect(() => {
     if (!auth) return;
+    connectWs(auth.accessToken);
     if (auth.userRole === "ROLE_PSYCHOLOGIST") {
       api.get<any[]>("/clients").then(setContacts);
     } else if (auth.userRole === "ROLE_CLIENT") {
@@ -26,8 +52,69 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!activeId) return;
-    api.get<any[]>(`/chat/conversation/${activeId}`).then(setMessages);
+    api.get<any[]>(`/chat/conversation/${activeId}`).then((data) => {
+      const updated = data.map((m) =>
+        m.receiverId === auth?.userId && !m.read ? { ...m, read: true } : m
+      );
+      setMessages(updated);
+      markMessagesRead(updated);
+    });
   }, [activeId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    let unsubscribeMessages: (() => void) | null = null;
+    let unsubscribeTyping: (() => void) | null = null;
+
+    unsubscribeMessages = subscribeWs(`/user/${userId}/queue/messages`, (payload) => {
+      const shouldRead =
+        payload?.senderId === activeId &&
+        payload?.receiverId === auth?.userId &&
+        !payload?.read;
+      const nextPayload = shouldRead ? { ...payload, read: true } : payload;
+
+      setMessages((prev) => {
+        const exists = prev.some((m) => m.id === payload.id);
+        if (exists) return prev;
+        return [...prev, nextPayload];
+      });
+
+      if (shouldRead) {
+        markMessagesRead([payload]);
+      }
+    });
+
+    unsubscribeTyping = subscribeWs(`/user/${userId}/queue/typing`, (payload: { senderId: number; typing: boolean }) => {
+      if (payload.senderId === activeId) {
+        setTyping(payload.typing);
+      }
+    });
+
+    return () => {
+      unsubscribeMessages?.();
+      unsubscribeTyping?.();
+    };
+  }, [userId, activeId]);
+
+  const sendTyping = (isTyping: boolean) => {
+    if (!activeId) return;
+    publishWs("/app/chat.typing", { receiverId: activeId, typing: isTyping });
+  };
+
+  const handleTyping = (value: string) => {
+    setText(value);
+    const now = Date.now();
+    if (now - lastTypingSent.current > 800) {
+      sendTyping(true);
+      lastTypingSent.current = now;
+    }
+    if (typingTimer.current) {
+      window.clearTimeout(typingTimer.current);
+    }
+    typingTimer.current = window.setTimeout(() => {
+      sendTyping(false);
+    }, 1200);
+  };
 
   const sendMessage = async () => {
     if (!activeId || (!text && !file)) return;
@@ -40,16 +127,30 @@ export default function ChatPage() {
       attachmentUrl = upload.fileUrl;
     }
 
-    await api.post("/chat/send", {
+    const payload = {
       receiverId: activeId,
       content: text,
       attachmentUrl
-    });
+    };
+
+    const optimistic = {
+      id: `tmp-${Date.now()}`,
+      senderId: userId,
+      receiverId: activeId,
+      content: text,
+      attachmentUrl,
+      sentAt: new Date().toISOString()
+    };
+    setMessages((prev) => [...prev, optimistic]);
+
+    const sent = await publishWs("/app/chat.send", payload);
+    if (!sent) {
+      await api.post("/chat/send", payload);
+    }
 
     setText("");
     setFile(null);
-    const updated = await api.get<any[]>(`/chat/conversation/${activeId}`);
-    setMessages(updated);
+    sendTyping(false);
   };
 
   return (
@@ -67,8 +168,10 @@ export default function ChatPage() {
               className={activeId === c.id ? "contact active" : "contact"}
               onClick={() => setActiveId(c.id)}
             >
-              <div className="contact-name">{c.fullName}</div>
-              <div className="muted">{c.specialization ?? c.phone}</div>
+              <div className="contact-inner">
+                <div className="contact-name">{c.fullName}</div>
+                <div className="muted">{c.specialization ?? c.phone}</div>
+              </div>
             </button>
           ))}
         </aside>
@@ -88,9 +191,10 @@ export default function ChatPage() {
                     <div className="message-time">{new Date(m.sentAt).toLocaleTimeString()}</div>
                   </div>
                 ))}
+                {typing && <div className="typing-indicator">… собеседник печатает</div>}
               </div>
               <div className="chat-input">
-                <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Сообщение…" />
+                <input value={text} onChange={(e) => handleTyping(e.target.value)} placeholder="Сообщение…" />
                 <input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
                 <button className="button" onClick={sendMessage}>Отправить</button>
               </div>

@@ -62,7 +62,7 @@ export default function RegisterPsychologistPage() {
       <div className="auth-card">
         <div className="auth-header">
           <div className="pill">Психолог</div>
-          <h2>Создание профиля</h2>
+          <h2>Профиль практики</h2>
           <p className="muted">Подтвердите номер и заполните анкету специалиста.</p>
         </div>
 
@@ -121,12 +121,12 @@ export default function RegisterPsychologistPage() {
 
       <div className="auth-aside">
         <div className="aside-card">
-          <h3>Проверка профиля</h3>
-          <p>После отправки анкеты профиль проходит верификацию администратором.</p>
+          <h3>Верификация</h3>
+          <p>После отправки анкеты профиль проходит проверку администратором.</p>
         </div>
         <div className="aside-card">
-          <h3>Рабочее место</h3>
-          <p>Клиенты, расписание, рекомендации и чат — в одной панели.</p>
+          <h3>Рабочее пространство</h3>
+          <p>Клиенты, расписание, рекомендации и чат — без лишнего.</p>
         </div>
       </div>
     </div>

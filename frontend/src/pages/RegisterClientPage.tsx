@@ -83,7 +83,7 @@ export default function RegisterClientPage() {
           <div className="auth-header">
             <div className="pill">Клиент</div>
             <h2>Нужен инвайт</h2>
-            <p className="muted">Регистрация клиента доступна только по приглашению психолога.</p>
+            <p className="muted">Регистрация доступна только по приглашению специалиста.</p>
           </div>
         </div>
       </div>
@@ -96,7 +96,7 @@ export default function RegisterClientPage() {
         <div className="auth-header">
           <div className="pill">Клиент</div>
           <h2>Регистрация по приглашению</h2>
-          <p className="muted">Подтвердите номер, заполните базовый профиль и начните работу.</p>
+          <p className="muted">Подтвердите номер, заполните базовый профиль и начните практику.</p>
         </div>
 
         {invite && (
@@ -148,11 +148,11 @@ export default function RegisterClientPage() {
       <div className="auth-aside">
         <div className="aside-card">
           <h3>Только по приглашению</h3>
-          <p>Доступ открывается вашим специалистом. Это часть системы безопасности.</p>
+          <p>Доступ открывается вашим специалистом. Это часть системы границ.</p>
         </div>
         <div className="aside-card">
           <h3>Ваши данные</h3>
-          <p>История сеансов, дневник и рекомендации будут доступны сразу после входа.</p>
+          <p>История сеансов, дневник и рекомендации доступны сразу после входа.</p>
         </div>
       </div>
     </div>

@@ -43,7 +43,7 @@ public class DashboardService {
                 .filter(client -> {
                     List<Session> futureSessions = sessionRepository.findByClientIdAndScheduledAtBetween(
                             client.getId(), now, thirtyDaysFromNow);
-                    return !futureSessions.isEmpty();
+                    return futureSessions.stream().anyMatch(this::isUpcomingStatus);
                 })
                 .count();
         dashboard.setActiveClients(activeClients);
@@ -80,6 +80,8 @@ public class DashboardService {
         List<Session> nextSessions = sessionRepository.findByPsychologistIdOrderByScheduledAtDesc(psychologistId)
                 .stream()
                 .filter(session -> session.getScheduledAt().isAfter(now))
+                .filter(this::isUpcomingStatus)
+                .sorted(Comparator.comparing(Session::getScheduledAt))
                 .limit(5)
                 .collect(Collectors.toList());
         dashboard.setNextSessions(nextSessions);
@@ -108,6 +110,8 @@ public class DashboardService {
         List<Session> upcomingSessions = sessionRepository.findByClientIdOrderByScheduledAtDesc(client.getId())
                 .stream()
                 .filter(session -> session.getScheduledAt().isAfter(now))
+                .filter(this::isUpcomingStatus)
+                .sorted(Comparator.comparing(Session::getScheduledAt))
                 .collect(Collectors.toList());
 
         if (!upcomingSessions.isEmpty()) {
@@ -138,6 +142,11 @@ public class DashboardService {
         dashboard.setRecentNotifications(recentNotifications);
 
         return dashboard;
+    }
+
+    private boolean isUpcomingStatus(Session session) {
+        return session.getStatus() != Session.SessionStatus.CANCELLED
+                && session.getStatus() != Session.SessionStatus.COMPLETED;
     }
 
     public PsychologistStats getPsychologistStats(Psychologist psychologist, LocalDateTime start, LocalDateTime end) {

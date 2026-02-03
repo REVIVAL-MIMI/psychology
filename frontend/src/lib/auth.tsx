@@ -1,13 +1,6 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { api } from "./api";
-import {
-  AuthState,
-  clearRefreshCookie,
-  clearStoredAuth,
-  getStoredAuth,
-  setRefreshCookie,
-  setStoredAuth
-} from "./storage";
+import { AuthState, clearStoredAuth, getStoredAuth, setStoredAuth } from "./storage";
 
 export type AuthContextValue = {
   auth: AuthState | null;
@@ -25,10 +18,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthState(next);
     if (next) {
       setStoredAuth(next);
-      setRefreshCookie(next.refreshToken);
     } else {
       clearStoredAuth();
-      clearRefreshCookie();
     }
   }, []);
 

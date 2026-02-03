@@ -29,7 +29,7 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.post<{ accessToken: string; refreshToken: string; userId: number; userRole: string; fullName: string; phone: string }>(
+      const data = await api.post<{ accessToken: string; userId: number; userRole: string; fullName: string; phone: string }>(
         "/auth/verify-otp",
         { phone, otp },
         { skipAuth: true }
@@ -48,7 +48,7 @@ export default function LoginPage() {
       <div className="auth-card">
         <div className="auth-header">
           <div className="pill">Вход</div>
-          <h2>Добро пожаловать</h2>
+          <h2>Спокойный вход</h2>
           <p className="muted">Введите номер и подтвердите одноразовым кодом.</p>
         </div>
 
@@ -91,11 +91,11 @@ export default function LoginPage() {
 
       <div className="auth-aside">
         <div className="aside-card">
-          <h3>Без паролей</h3>
-          <p>Быстрый доступ с OTP‑кодом, меньше риска, больше спокойствия.</p>
+          <h3>Без лишнего</h3>
+          <p>OTP‑код вместо паролей — меньше шума, больше ясности.</p>
         </div>
         <div className="aside-card">
-          <h3>Конфиденциальность</h3>
+          <h3>Границы</h3>
           <p>Данные доступны только вам и вашему специалисту.</p>
         </div>
       </div>

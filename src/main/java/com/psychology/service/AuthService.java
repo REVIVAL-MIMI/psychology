@@ -14,11 +14,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -31,13 +29,14 @@ public class AuthService {
     private final InviteRepository inviteRepository;
     private final OTPService otpService;
     private final JwtTokenProvider jwtTokenProvider;
-    private final PasswordEncoder passwordEncoder;
     private final StringRedisTemplate stringRedisTemplate;
 
     private static final String BLACKLIST_PREFIX = "blacklist:";
     private static final String REFRESH_PREFIX = "refresh:";
 
-    public AuthResponse verifyOTPAndAuthenticate(VerifyOtpRequest request) {
+    public record AuthResult(AuthResponse response, String refreshToken) {}
+
+    public AuthResult verifyOTPAndAuthenticate(VerifyOtpRequest request) {
         // Проверяем OTP
         if (!otpService.verifyOTP(request.getPhone(), request.getOtp())) {
             throw new RuntimeException("Invalid OTP");
@@ -58,7 +57,7 @@ public class AuthService {
         return generateAuthResponse(user);
     }
 
-    public AuthResponse refreshToken(String refreshToken) {
+    public AuthResult refreshToken(String refreshToken) {
         // Проверяем, не в черном списке ли токен
         if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(BLACKLIST_PREFIX + refreshToken))) {
             throw new RuntimeException("Token is blacklisted");
@@ -91,7 +90,7 @@ public class AuthService {
         return generateAuthResponse(user);
     }
 
-    public AuthResponse registerPsychologist(PsychologistRegisterRequest request) {
+    public AuthResult registerPsychologist(PsychologistRegisterRequest request) {
         // Проверяем, не занят ли телефон
         if (userRepository.existsByPhone(request.getPhone())) {
             throw new RuntimeException("Phone already registered");
@@ -114,7 +113,7 @@ public class AuthService {
         return generateAuthResponse(psychologist);
     }
 
-    public AuthResponse registerClient(ClientRegisterRequest request, String inviteToken) {
+    public AuthResult registerClient(ClientRegisterRequest request, String inviteToken) {
         // Проверяем инвайт
         Invite invite = inviteRepository.findByToken(inviteToken)
                 .orElseThrow(() -> new RuntimeException("Invalid invite token"));
@@ -165,14 +164,20 @@ public class AuthService {
             );
         }
 
+        String phone = null;
+
         if (refreshToken != null) {
-            // Удаляем refresh token из валидных
-            String phone = jwtTokenProvider.extractUsername(refreshToken);
+            phone = jwtTokenProvider.extractUsername(refreshToken);
+        } else if (accessToken != null && jwtTokenProvider.validateToken(accessToken)) {
+            phone = jwtTokenProvider.extractUsername(accessToken);
+        }
+
+        if (phone != null && !phone.isBlank()) {
             stringRedisTemplate.delete(REFRESH_PREFIX + phone);
         }
     }
 
-    private AuthResponse generateAuthResponse(com.psychology.model.entity.User user) {
+    private AuthResult generateAuthResponse(com.psychology.model.entity.User user) {
         // Создаем UserDetails для генерации токена
         UserDetails userDetails = org.springframework.security.core.userdetails.User
                 .withUsername(user.getPhone())
@@ -193,13 +198,12 @@ public class AuthService {
 
         AuthResponse response = new AuthResponse();
         response.setAccessToken(accessToken);
-        response.setRefreshToken(refreshToken);
         response.setUserId(user.getId());
         response.setUserRole(user.getRole().name());
         response.setFullName(getFullName(user));
         response.setPhone(user.getPhone());
 
-        return response;
+        return new AuthResult(response, refreshToken);
     }
 
     private String getFullName(com.psychology.model.entity.User user) {

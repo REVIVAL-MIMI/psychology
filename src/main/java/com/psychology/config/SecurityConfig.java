@@ -45,6 +45,7 @@ public class SecurityConfig {
                                 "/api/v1/invites/validate/**",
                                 "/api/v1/test/**",
                                 "/api/v1/debug/**",
+                                "/ws-chat",
                                 "/ws-chat/**",
                                 "/error",
                                 "/api/v1/files/upload/**"

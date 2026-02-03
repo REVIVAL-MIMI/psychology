@@ -201,7 +201,7 @@ export default function RecommendationsPage() {
               <input type="datetime-local" value={filters.to} onChange={(e) => setFilters({ ...filters, to: e.target.value })} />
             </label>
           </div>
-          <div className="row">
+          <div className="filter-actions">
             <button className="button ghost" onClick={applyFilters}>Применить</button>
             <button className="button ghost" onClick={() => setFilters({ completed: "", overdue: "", from: "", to: "" })}>Сбросить</button>
           </div>

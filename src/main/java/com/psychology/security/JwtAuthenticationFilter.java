@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -23,6 +24,15 @@ import java.util.Collections;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
+    private final StringRedisTemplate stringRedisTemplate;
+
+    private static final String BLACKLIST_PREFIX = "blacklist:";
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String requestUri = request.getRequestURI();
+        return "OPTIONS".equalsIgnoreCase(request.getMethod()) || isPublicEndpoint(requestUri);
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -34,18 +44,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             log.debug("Processing request: {} {}", request.getMethod(), requestUri);
 
             // Пропускаем публичные эндпоинты
-            if (requestUri.startsWith("/api/v1/auth/") ||
-                    requestUri.startsWith("/api/v1/invites/validate/") ||
-                    requestUri.startsWith("/api/v1/test/") ||
-                    requestUri.startsWith("/api/v1/debug/") ||
-                    requestUri.equals("/error")) {
+            if (isPublicEndpoint(requestUri)) {
                 filterChain.doFilter(request, response);
                 return;
             }
 
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
                 log.warn("No Bearer token found for protected endpoint: {}", requestUri);
-                filterChain.doFilter(request, response);
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.getWriter().write("Authorization header missing or invalid");
                 return;
             }
 
@@ -53,7 +60,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             if (!jwtTokenProvider.validateToken(jwt)) {
                 log.warn("Invalid or expired token");
-                filterChain.doFilter(request, response);
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.getWriter().write("Token is invalid or expired");
+                return;
+            }
+
+            if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(BLACKLIST_PREFIX + jwt))) {
+                log.warn("Blacklisted token used for protected endpoint: {}", requestUri);
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.getWriter().write("Token is blacklisted");
                 return;
             }
 
@@ -83,5 +98,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isPublicEndpoint(String requestUri) {
+        return requestUri.startsWith("/api/v1/auth/") ||
+                requestUri.startsWith("/api/v1/invites/validate/") ||
+                requestUri.startsWith("/api/v1/test/") ||
+                requestUri.startsWith("/api/v1/debug/") ||
+                requestUri.startsWith("/ws-chat") ||
+                requestUri.equals("/error");
     }
 }

@@ -1,4 +1,4 @@
-import { clearStoredAuth, getStoredAuth, setRefreshCookie, setStoredAuth } from "./storage";
+import { clearStoredAuth, getStoredAuth, setStoredAuth } from "./storage";
 
 const API_PREFIX = "/api/v1";
 
@@ -73,14 +73,12 @@ async function tryRefresh(): Promise<boolean> {
     if (!response.ok) return false;
     const data = (await response.json()) as {
       accessToken: string;
-      refreshToken: string;
       userId: number;
       userRole: "ROLE_CLIENT" | "ROLE_PSYCHOLOGIST" | "ROLE_ADMIN";
       fullName: string;
       phone: string;
     };
     setStoredAuth(data);
-    setRefreshCookie(data.refreshToken);
     return true;
   } catch {
     clearStoredAuth();
@@ -89,12 +87,12 @@ async function tryRefresh(): Promise<boolean> {
 }
 
 export const api = {
-  get: <T>(path: string, options?: RequestOptions) => request<T>(path, { ...options, method: "GET" }),
-  post: <T>(path: string, body?: unknown, options?: RequestOptions) =>
+  get: <T = any>(path: string, options?: RequestOptions) => request<T>(path, { ...options, method: "GET" }),
+  post: <T = any>(path: string, body?: unknown, options?: RequestOptions) =>
     request<T>(path, { ...options, method: "POST", body }),
-  put: <T>(path: string, body?: unknown, options?: RequestOptions) =>
+  put: <T = any>(path: string, body?: unknown, options?: RequestOptions) =>
     request<T>(path, { ...options, method: "PUT", body }),
-  del: <T>(path: string, options?: RequestOptions) => request<T>(path, { ...options, method: "DELETE" }),
-  upload: <T>(path: string, formData: FormData) =>
+  del: <T = any>(path: string, options?: RequestOptions) => request<T>(path, { ...options, method: "DELETE" }),
+  upload: <T = any>(path: string, formData: FormData) =>
     request<T>(path, { method: "POST", body: formData, isForm: true })
 };

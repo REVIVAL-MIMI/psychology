@@ -27,7 +27,6 @@ public class AuthDTO {
     @Data
     public static class AuthResponse {
         private String accessToken;
-        private String refreshToken;
         private Long userId;
         private String userRole;
         private String fullName;

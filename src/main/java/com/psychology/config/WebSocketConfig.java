@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.config.ChannelRegistration;
@@ -32,6 +33,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
+    private final StringRedisTemplate stringRedisTemplate;
+
+    private static final String BLACKLIST_PREFIX = "blacklist:";
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
@@ -43,11 +47,21 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws-chat")
-                .setAllowedOriginPatterns("http://localhost:3000", "http://localhost:8080")
+                .setAllowedOriginPatterns(
+                        "http://localhost:3000",
+                        "http://localhost:8080",
+                        "http://localhost:5173",
+                        "http://127.0.0.1:5173"
+                )
                 .withSockJS();
 
         registry.addEndpoint("/ws-chat")
-                .setAllowedOriginPatterns("http://localhost:3000", "http://localhost:8080");
+                .setAllowedOriginPatterns(
+                        "http://localhost:3000",
+                        "http://localhost:8080",
+                        "http://localhost:5173",
+                        "http://127.0.0.1:5173"
+                );
     }
 
     @Override
@@ -67,6 +81,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                             token = token.substring(7);
 
                             try {
+                                if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(BLACKLIST_PREFIX + token))) {
+                                    log.warn("Blacklisted WebSocket token");
+                                    return null;
+                                }
+
                                 if (jwtTokenProvider.validateToken(token)) {
                                     String phone = jwtTokenProvider.extractUsername(token);
 

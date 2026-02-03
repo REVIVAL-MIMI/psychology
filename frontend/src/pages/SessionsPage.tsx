@@ -154,7 +154,9 @@ export default function SessionsPage() {
               </select>
             </label>
           </div>
-          <button className="button ghost" onClick={() => setFilters({ from: "", to: "", status: "" })}>Сбросить</button>
+          <div className="filter-actions">
+            <button className="button ghost" onClick={() => setFilters({ from: "", to: "", status: "" })}>Сбросить</button>
+          </div>
         </div>
 
         <h3>Список сеансов</h3>
