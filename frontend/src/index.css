@@ -300,27 +300,6 @@ label {
   border-bottom: 1px solid var(--border);
 }
 
-.orb {
-  position: absolute;
-  width: 110px;
-  height: 110px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--accent) 45%, transparent), transparent 60%);
-  opacity: 0.6;
-  filter: blur(2px);
-}
-
-.orb-1 {
-  top: -10px;
-  right: 20px;
-}
-
-.orb-2 {
-  bottom: -10px;
-  left: 0;
-  opacity: 0.35;
-}
-
 .feature-grid {
   display: grid;
   gap: 18px;
@@ -359,6 +338,71 @@ label {
 .cta p {
   margin: 6px 0 0;
   color: color-mix(in srgb, var(--cta-text) 72%, transparent);
+}
+
+.home-flow {
+  margin-top: 10px;
+  display: grid;
+  gap: 16px;
+}
+
+.home-flow h2 {
+  margin: 0;
+}
+
+.flow-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.flow-card {
+  background: var(--panel);
+  border-radius: var(--radius);
+  padding: 18px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 8px;
+}
+
+.flow-step {
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+}
+
+.flow-card h3 {
+  margin: 0;
+}
+
+.flow-card p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.home-values {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.value-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: grid;
+  gap: 6px;
+}
+
+.value-title {
+  font-weight: 600;
+}
+
+.value-text {
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .auth-page {

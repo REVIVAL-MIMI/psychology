@@ -5,15 +5,15 @@ export default function HomePage() {
     <div className="home">
       <section className="hero">
         <div className="hero-content">
-          <div className="pill">Практика и дисциплина</div>
+          <div className="pill">Психологическая практика</div>
           <h1>
-            Тихое пространство
+            Спокойная работа
             <br />
-            для устойчивой терапии
+            с вниманием к человеку
           </h1>
           <p>
-            Сеансы, рекомендации, дневник и чат — в ясной структуре.
-            Без шума, с опорой на ритм практики и доверие.
+            Сеансы, дневник и рекомендации собраны в одном месте.
+            Без лишнего — только то, что помогает вести практику и поддерживать клиента.
           </p>
           <div className="hero-actions">
             <Link to="/login" className="button">Войти</Link>
@@ -30,32 +30,66 @@ export default function HomePage() {
             <div className="glass-title">Сегодня</div>
             <div className="glass-line">10:30 — Сеанс с клиентом</div>
             <div className="glass-line">12:00 — Запись в дневнике</div>
-            <div className="glass-line">15:00 — Рекомендация в работе</div>
+            <div className="glass-line">15:00 — Рекомендация</div>
           </div>
-          <div className="orb orb-1" />
-          <div className="orb orb-2" />
         </div>
       </section>
 
       <section className="feature-grid">
         <div className="feature-card">
-          <h3>Ясный вход</h3>
-          <p>OTP по номеру телефона — без паролей и лишних действий.</p>
+          <h3>Простой вход</h3>
+          <p>Доступ без лишних шагов и перегрузки.</p>
         </div>
         <div className="feature-card">
-          <h3>Фокус на практике</h3>
-          <p>Сеансы, дневник и рекомендации — в одном спокойном ритме.</p>
+          <h3>Структура</h3>
+          <p>Сеансы, дневник и рекомендации — в единой логике.</p>
         </div>
         <div className="feature-card">
-          <h3>Границы и доверие</h3>
-          <p>Доступ только к своим данным и строгие роли.</p>
+          <h3>Конфиденциальность</h3>
+          <p>Доступ к данным только у клиента и специалиста.</p>
+        </div>
+      </section>
+
+      <section className="home-flow">
+        <h2>Как устроен процесс</h2>
+        <div className="flow-grid">
+          <div className="flow-card">
+            <div className="flow-step">01</div>
+            <h3>Профиль специалиста</h3>
+            <p>Психолог заполняет данные и ожидает подтверждения.</p>
+          </div>
+          <div className="flow-card">
+            <div className="flow-step">02</div>
+            <h3>Приглашение клиента</h3>
+            <p>Клиент получает доступ по приглашению и подтверждает номер.</p>
+          </div>
+          <div className="flow-card">
+            <div className="flow-step">03</div>
+            <h3>Совместная работа</h3>
+            <p>Сеансы, заметки и рекомендации — в одном спокойном ритме.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="home-values">
+        <div className="value-card">
+          <div className="value-title">Спокойствие</div>
+          <div className="value-text">Ровный тон и ясная структура.</div>
+        </div>
+        <div className="value-card">
+          <div className="value-title">Границы</div>
+          <div className="value-text">Только то, что нужно для работы.</div>
+        </div>
+        <div className="value-card">
+          <div className="value-title">Доверие</div>
+          <div className="value-text">Данные доступны только участникам процесса.</div>
         </div>
       </section>
 
       <section className="cta">
         <div>
-          <h2>Начать практику</h2>
-          <p>Создайте профиль и выстройте устойчивый рабочий ритм.</p>
+          <h2>Начать работу</h2>
+          <p>Создайте профиль и выстройте спокойный рабочий процесс.</p>
         </div>
         <Link to="/register/psychologist" className="button">
           Создать профиль

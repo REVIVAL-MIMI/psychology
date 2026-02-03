@@ -39,15 +39,25 @@ export default function AppLayout() {
     recommendations: 0,
     sessions: 0
   });
-  const seenCountsRef = useRef<{ chat: number; recommendations: number; sessions: number }>(() => {
+  const seenCountsRef = useRef<{ chat: number; recommendations: number; sessions: number }>({
+    chat: 0,
+    recommendations: 0,
+    sessions: 0
+  });
+
+  useEffect(() => {
     try {
       const raw = localStorage.getItem("psychology.seen");
-      if (!raw) return { chat: 0, recommendations: 0, sessions: 0 };
-      return { chat: 0, recommendations: 0, sessions: 0, ...JSON.parse(raw) };
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      seenCountsRef.current = {
+        ...seenCountsRef.current,
+        ...parsed
+      };
     } catch {
-      return { chat: 0, recommendations: 0, sessions: 0 };
+      // ignore
     }
-  }) as React.MutableRefObject<{ chat: number; recommendations: number; sessions: number }>;
+  }, []);
   const location = useLocation();
 
   if (!auth) return null;
