@@ -182,6 +182,10 @@ export default function AppLayout() {
     }
   }, [location.pathname, latestCounts]);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [location.pathname]);
+
   return (
     <div className="app-shell">
       <header className="topbar">

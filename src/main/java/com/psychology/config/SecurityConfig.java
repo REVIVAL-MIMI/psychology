@@ -88,7 +88,9 @@ public class SecurityConfig {
                 "http://localhost:63342",
                 "http://localhost:5173",
                 "http://localhost:5173/",
-                "http://127.0.0.1:63342"));
+                "http://127.0.0.1:63342",
+                "http://188.225.45.82:3000",
+                "http://188.225.45.82"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
