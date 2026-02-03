@@ -113,7 +113,6 @@ public class DashboardController {
         private Long id;
         private String fullName;
         private String specialization;
-        private String photoUrl;
         private String email;
     }
 

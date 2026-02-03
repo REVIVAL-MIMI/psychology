@@ -13,7 +13,6 @@ public class PsychologistDTO {
     private String education;
     private String specialization;
     private String description;
-    private String photoUrl;
     private boolean verified;
     private LocalDateTime verifiedAt;
     private LocalDateTime createdAt;

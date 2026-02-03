@@ -5,6 +5,7 @@ import com.psychology.model.entity.*;
 import com.psychology.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -21,6 +22,7 @@ public class ClientManagementService {
     private final JournalEntryRepository journalEntryRepository;
     private final RecommendationRepository recommendationRepository;
     private final MessageRepository messageRepository;
+    private final NotificationRepository notificationRepository;
 
     public List<Client> getAllClients(Psychologist psychologist) {
         return clientRepository.findByPsychologistId(psychologist.getId());
@@ -186,5 +188,20 @@ public class ClientManagementService {
         activity.setMessageActivity(messageActivity);
 
         return activity;
+    }
+
+    @Transactional
+    public void deleteClient(Psychologist psychologist, Long clientId) {
+        Client client = getClient(psychologist, clientId);
+
+        // Удаляем связанные данные
+        messageRepository.deleteAllByUserId(clientId);
+        notificationRepository.deleteByUserId(clientId);
+        recommendationRepository.deleteByClientId(clientId);
+        journalEntryRepository.deleteByClientId(clientId);
+        sessionRepository.deleteByClientId(clientId);
+
+        // Удаляем клиента (и запись в users)
+        clientRepository.delete(client);
     }
 }

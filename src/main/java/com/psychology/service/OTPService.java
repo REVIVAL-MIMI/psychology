@@ -49,6 +49,15 @@ public class OTPService {
                 TimeUnit.MINUTES
         );
 
+        // Сохраняем OTP для админки (последний по номеру)
+        String adminKey = "otp_admin:" + phone;
+        stringRedisTemplate.opsForValue().set(
+                adminKey,
+                otp,
+                OTP_TTL_MINUTES,
+                TimeUnit.MINUTES
+        );
+
         // Установка таймаута на повторную отправку
         stringRedisTemplate.opsForValue().set(
                 timeoutKey,
@@ -59,6 +68,12 @@ public class OTPService {
 
         // Логирование OTP (в продакшене будет отправка SMS)
         log.info("OTP for {}: {}", phone, otp);
+
+        // Добавляем в список последних OTP для админки
+        String recentKey = "otp_admin_recent";
+        String payload = phone + "|" + otp + "|" + System.currentTimeMillis();
+        stringRedisTemplate.opsForList().leftPush(recentKey, payload);
+        stringRedisTemplate.opsForList().trim(recentKey, 0, 49); // храним последние 50
 
         return otp;
     }

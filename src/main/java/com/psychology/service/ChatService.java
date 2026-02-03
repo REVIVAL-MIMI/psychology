@@ -40,8 +40,20 @@ public class ChatService {
             throw new RuntimeException("Cannot send message to this user");
         }
 
+        String content = request.getContent() != null ? request.getContent().trim() : "";
+        String attachmentUrl = request.getAttachmentUrl();
+
+        // Сообщение должно содержать текст или вложение
+        if (content.isEmpty() && (attachmentUrl == null || attachmentUrl.isBlank())) {
+            throw new RuntimeException("Message must contain text or attachment");
+        }
+
+        if (attachmentUrl != null && isImageAttachment(attachmentUrl)) {
+            throw new RuntimeException("Image attachments are not allowed");
+        }
+
         // Проверяем длину сообщения (макс 2000 символов по ТЗ)
-        if (request.getContent().length() > 2000) {
+        if (content.length() > 2000) {
             throw new RuntimeException("Message too long. Maximum 2000 characters");
         }
 
@@ -49,8 +61,8 @@ public class ChatService {
         Message message = new Message();
         message.setSender(sender);
         message.setReceiver(receiver);
-        message.setContent(request.getContent());
-        message.setAttachmentUrl(request.getAttachmentUrl());
+        message.setContent(content);
+        message.setAttachmentUrl(attachmentUrl);
         message.setSentAt(LocalDateTime.now());
 
         messageRepository.save(message);
@@ -163,6 +175,18 @@ public class ChatService {
         dto.setRead(message.isRead());
         dto.setSentAt(message.getSentAt());
         return dto;
+    }
+
+    private boolean isImageAttachment(String attachmentUrl) {
+        String lower = attachmentUrl.trim().toLowerCase();
+        return lower.startsWith("data:image/") ||
+                lower.endsWith(".png") ||
+                lower.endsWith(".jpg") ||
+                lower.endsWith(".jpeg") ||
+                lower.endsWith(".gif") ||
+                lower.endsWith(".webp") ||
+                lower.endsWith(".bmp") ||
+                lower.endsWith(".svg");
     }
 
     private String getUserName(User user) {

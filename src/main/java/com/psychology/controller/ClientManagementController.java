@@ -100,6 +100,21 @@ public class ClientManagementController {
         }
     }
 
+    // Удалить клиента и все его данные
+    @DeleteMapping("/{clientId}")
+    @PreAuthorize("hasRole('PSYCHOLOGIST')")
+    public ResponseEntity<?> deleteClient(
+            @AuthenticationPrincipal Psychologist psychologist,
+            @PathVariable Long clientId) {
+        try {
+            clientManagementService.deleteClient(psychologist, clientId);
+            return ResponseEntity.ok(new ApiResponse("Client deleted successfully"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse(e.getMessage()));
+        }
+    }
+
     @Data
     public static class ApiResponse {
         private String message;

@@ -9,8 +9,8 @@ export default function ChatPage() {
   const [activeId, setActiveId] = useState<number | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState("");
-  const [file, setFile] = useState<File | null>(null);
   const [typing, setTyping] = useState(false);
+  const [unreadBySender, setUnreadBySender] = useState<Record<number, number>>({});
   const [callState, setCallState] = useState<"idle" | "calling" | "incoming" | "in-call">("idle");
   const [incomingOffer, setIncomingOffer] = useState<any | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -20,6 +20,7 @@ export default function ChatPage() {
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+  const endRef = useRef<HTMLDivElement | null>(null);
 
   const userId = useMemo(() => auth?.userId ?? null, [auth]);
   const activeContact = useMemo(
@@ -43,6 +44,9 @@ export default function ChatPage() {
           // ignore
         }
       }
+    }
+    if (activeId) {
+      setUnreadBySender((prev) => ({ ...prev, [activeId]: 0 }));
     }
   };
 
@@ -170,6 +174,12 @@ export default function ChatPage() {
   }, [auth]);
 
   useEffect(() => {
+    if (auth?.userRole === "ROLE_CLIENT" && contacts.length && !activeId) {
+      setActiveId(contacts[0].id);
+    }
+  }, [auth?.userRole, contacts, activeId]);
+
+  useEffect(() => {
     if (!activeId) return;
     api.get<any[]>(`/chat/conversation/${activeId}`).then((data) => {
       const updated = data.map((m) =>
@@ -177,11 +187,24 @@ export default function ChatPage() {
       );
       setMessages(updated);
       markMessagesRead(updated);
+      setUnreadBySender((prev) => ({ ...prev, [activeId]: 0 }));
     });
   }, [activeId]);
 
   useEffect(() => {
     if (!userId) return;
+    api.get<any[]>("/chat/unread").then((items) => {
+      const next: Record<number, number> = {};
+      items.forEach((m) => {
+        if (typeof m.senderId === "number") {
+          next[m.senderId] = (next[m.senderId] ?? 0) + 1;
+        }
+      });
+      setUnreadBySender(next);
+    }).catch(() => {
+      setUnreadBySender({});
+    });
+
     let unsubscribeMessages: (() => void) | null = null;
     let unsubscribeTyping: (() => void) | null = null;
     let unsubscribeCall: (() => void) | null = null;
@@ -196,8 +219,31 @@ export default function ChatPage() {
       setMessages((prev) => {
         const exists = prev.some((m) => m.id === payload.id);
         if (exists) return prev;
+
+        // Если это наш же месседж, заменяем оптимистичный tmp
+        if (payload?.senderId === auth?.userId) {
+          const idx = prev.findIndex(
+            (m) =>
+              typeof m.id === "string" &&
+              m.id.startsWith("tmp-") &&
+              m.receiverId === payload.receiverId &&
+              m.content === payload.content
+          );
+          if (idx !== -1) {
+            const next = [...prev];
+            next[idx] = nextPayload;
+            return next;
+          }
+        }
         return [...prev, nextPayload];
       });
+
+      if (!shouldRead && payload?.receiverId === auth?.userId && payload?.senderId) {
+        setUnreadBySender((prev) => ({
+          ...prev,
+          [payload.senderId]: (prev[payload.senderId] ?? 0) + 1
+        }));
+      }
 
       if (shouldRead) {
         markMessagesRead([payload]);
@@ -243,6 +289,11 @@ export default function ChatPage() {
     };
   }, [userId, activeId, callState]);
 
+  useEffect(() => {
+    if (!activeId) return;
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, activeId]);
+
   const sendTyping = (isTyping: boolean) => {
     if (!activeId) return;
     publishWs("/app/chat.typing", { receiverId: activeId, typing: isTyping });
@@ -264,20 +315,11 @@ export default function ChatPage() {
   };
 
   const sendMessage = async () => {
-    if (!activeId || (!text && !file)) return;
-
-    let attachmentUrl: string | undefined = undefined;
-    if (file) {
-      const form = new FormData();
-      form.append("file", file);
-      const upload = await api.upload<{ fileUrl: string }>("/files/upload", form);
-      attachmentUrl = upload.fileUrl;
-    }
+    if (!activeId || !text) return;
 
     const payload = {
       receiverId: activeId,
-      content: text,
-      attachmentUrl
+      content: text
     };
 
     const optimistic = {
@@ -285,7 +327,6 @@ export default function ChatPage() {
       senderId: userId,
       receiverId: activeId,
       content: text,
-      attachmentUrl,
       sentAt: new Date().toISOString()
     };
     setMessages((prev) => [...prev, optimistic]);
@@ -296,7 +337,6 @@ export default function ChatPage() {
     }
 
     setText("");
-    setFile(null);
     sendTyping(false);
   };
 
@@ -312,7 +352,13 @@ export default function ChatPage() {
           {contacts.map((c) => (
             <button
               key={c.id}
-              className={activeId === c.id ? "contact active" : "contact"}
+              className={
+                activeId === c.id
+                  ? "contact active"
+                  : unreadBySender[c.id]
+                    ? "contact unread"
+                    : "contact"
+              }
               onClick={() => setActiveId(c.id)}
             >
               <div className="contact-inner">
@@ -350,21 +396,27 @@ export default function ChatPage() {
 
               <div className="chat-messages">
                 {messages.map((m) => (
-                  <div key={m.id} className={m.senderId === auth?.userId ? "message outgoing" : "message incoming"}>
+                  <div
+                    key={m.id}
+                    className={
+                      m.senderId === auth?.userId
+                        ? "message outgoing"
+                        : m.receiverId === auth?.userId && !m.read
+                          ? "message incoming unread"
+                          : "message incoming"
+                    }
+                  >
                     <div className="message-body">
                       <div className="message-text">{m.content}</div>
-                      {m.attachmentUrl && (
-                        <a href={m.attachmentUrl} className="link">Вложение</a>
-                      )}
                     </div>
                     <div className="message-time">{new Date(m.sentAt).toLocaleTimeString()}</div>
                   </div>
                 ))}
+                <div ref={endRef} />
                 {typing && <div className="typing-indicator">… собеседник печатает</div>}
               </div>
               <div className="chat-input">
                 <input value={text} onChange={(e) => handleTyping(e.target.value)} placeholder="Сообщение…" />
-                <input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
                 <button className="button" onClick={sendMessage}>Отправить</button>
               </div>
             </>

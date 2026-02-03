@@ -124,12 +124,12 @@ export default function DashboardPage() {
 
       {auth.userRole === "ROLE_CLIENT" && data && (
         <div className="grid-2">
-          <div className="card">
+          <div className="card stat-card">
             <div className="label">Ваш психолог</div>
             <div className="value">{data.psychologist?.fullName ?? "—"}</div>
             <div className="muted">{data.psychologist?.specialization ?? ""}</div>
           </div>
-          <div className="card">
+          <div className="card stat-card">
             <div className="label">Следующий сеанс</div>
             <div className="value">
               {data.nextSession
@@ -137,11 +137,11 @@ export default function DashboardPage() {
                 : "Не назначен"}
             </div>
           </div>
-          <div className="card">
+          <div className="card stat-card">
             <div className="label">Непрочитанные сообщения</div>
             <div className="value">{data.unreadMessages}</div>
           </div>
-          <div className="card">
+          <div className="card stat-card">
             <div className="label">Активные рекомендации</div>
             <div className="value">{data.pendingRecommendations}</div>
           </div>

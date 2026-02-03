@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { formatPhone, normalizePhone } from "../lib/phone";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -16,7 +17,7 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      await api.post("/auth/send-otp", { phone }, { skipAuth: true });
+      await api.post("/auth/send-otp", { phone: normalizePhone(phone) }, { skipAuth: true });
       setStage("otp");
     } catch (e) {
       setError("Не удалось отправить код. Проверьте номер.");
@@ -29,9 +30,9 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.post<{ accessToken: string; userId: number; userRole: string; fullName: string; phone: string }>(
+      const data = await api.post<{ accessToken: string; userId: number; userRole: string; fullName: string; phone: string; verified?: boolean }>(
         "/auth/verify-otp",
-        { phone, otp },
+        { phone: normalizePhone(phone), otp },
         { skipAuth: true }
       );
       setAuth(data as any);
@@ -59,7 +60,8 @@ export default function LoginPage() {
               type="tel"
               placeholder="+79990000000"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => setPhone(formatPhone(e.target.value))}
+              inputMode="tel"
             />
           </label>
 

@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../lib/api";
 
 export default function ClientDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [client, setClient] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
   const [activity, setActivity] = useState<any>(null);
@@ -18,6 +19,14 @@ export default function ClientDetailPage() {
     api.get(`/journal/client/${id}`).then(setJournal).catch(() => null);
     api.get(`/recommendations/client/${id}`).then(setRecommendations).catch(() => null);
   }, [id]);
+
+  const deleteClient = async () => {
+    if (!id) return;
+    const ok = window.confirm("Удалить клиента и все его данные? Это действие необратимо.");
+    if (!ok) return;
+    await api.del(`/clients/${id}`);
+    navigate("/app/clients");
+  };
 
   return (
     <div className="page">
@@ -34,6 +43,9 @@ export default function ClientDetailPage() {
             <div className="card-title">{client.fullName}</div>
             <div className="muted">Возраст: {client.age ?? "—"}</div>
             <div className="muted">Телефон: {client.phone ?? "—"}</div>
+            <div className="card-actions">
+              <button className="button ghost" onClick={deleteClient}>Удалить клиента</button>
+            </div>
           </div>
           {stats && (
             <div className="card">

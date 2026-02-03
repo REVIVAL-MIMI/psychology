@@ -16,6 +16,7 @@ import InvitesPage from "./pages/InvitesPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import ProfilePage from "./pages/ProfilePage";
 import AdminPage from "./pages/AdminPage";
+import PendingApprovalPage from "./pages/PendingApprovalPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
@@ -76,6 +77,7 @@ export default function App() {
           />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="profile" element={<ProfilePage />} />
+          <Route path="pending" element={<PendingApprovalPage />} />
           <Route
             path="admin"
             element={

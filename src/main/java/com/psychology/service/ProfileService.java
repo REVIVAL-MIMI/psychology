@@ -38,7 +38,6 @@ public class ProfileService {
         dto.setEducation(psychologist.getEducation());
         dto.setSpecialization(psychologist.getSpecialization());
         dto.setDescription(psychologist.getDescription());
-        dto.setPhotoUrl(psychologist.getPhotoUrl());
         dto.setVerified(psychologist.isVerified());
         dto.setVerifiedAt(psychologist.getVerifiedAt());
         dto.setCreatedAt(psychologist.getCreatedAt());
@@ -67,9 +66,6 @@ public class ProfileService {
         if (request.getDescription() != null) {
             existingPsychologist.setDescription(request.getDescription());
         }
-        if (request.getPhotoUrl() != null) {
-            existingPsychologist.setPhotoUrl(request.getPhotoUrl());
-        }
 
         return psychologistRepository.save(existingPsychologist);
     }
@@ -88,9 +84,6 @@ public class ProfileService {
                 throw new RuntimeException("Invalid age");
             }
             existingClient.setAge(request.getAge());
-        }
-        if (request.getPhotoUrl() != null) {
-            existingClient.setPhotoUrl(request.getPhotoUrl());
         }
 
         return clientRepository.save(existingClient);

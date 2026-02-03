@@ -2,6 +2,7 @@ import { ChangeEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { formatPhone, normalizePhone } from "../lib/phone";
 
 const initialForm = {
   phone: "",
@@ -10,8 +11,7 @@ const initialForm = {
   email: "",
   education: "",
   specialization: "",
-  description: "",
-  photoUrl: ""
+  description: ""
 };
 
 export default function RegisterPsychologistPage() {
@@ -30,7 +30,7 @@ export default function RegisterPsychologistPage() {
     setLoading(true);
     setError(null);
     try {
-      await api.post("/auth/send-otp", { phone: form.phone }, { skipAuth: true });
+      await api.post("/auth/send-otp", { phone: normalizePhone(form.phone) }, { skipAuth: true });
       setStage("profile");
     } catch {
       setError("Не удалось отправить код. Проверьте номер.");
@@ -45,7 +45,7 @@ export default function RegisterPsychologistPage() {
     try {
       const data = await api.post(
         "/auth/psychologist/register",
-        form,
+        { ...form, phone: normalizePhone(form.phone) },
         { skipAuth: true }
       );
       setAuth(data as any);
@@ -69,7 +69,13 @@ export default function RegisterPsychologistPage() {
         <div className="form">
           <label>
             Номер телефона
-            <input type="tel" value={form.phone} onChange={update("phone")} placeholder="+79990000000" />
+            <input
+              type="tel"
+              value={form.phone}
+              onChange={(e) => setForm((prev) => ({ ...prev, phone: formatPhone(e.target.value) }))}
+              placeholder="+7 (999) 000-00-00"
+              inputMode="tel"
+            />
           </label>
 
           {stage === "profile" && (
@@ -97,10 +103,6 @@ export default function RegisterPsychologistPage() {
               <label>
                 Описание
                 <textarea value={form.description} onChange={update("description")} rows={4} />
-              </label>
-              <label>
-                Фото (URL)
-                <input value={form.photoUrl} onChange={update("photoUrl")} placeholder="https://" />
               </label>
             </>
           )}

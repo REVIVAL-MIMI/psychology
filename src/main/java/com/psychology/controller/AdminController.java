@@ -66,6 +66,23 @@ public class AdminController {
         return ResponseEntity.ok(stats);
     }
 
+    // Получить последний OTP для номера телефона (админ)
+    @GetMapping("/otp/{phone}")
+    public ResponseEntity<?> getLastOtp(@PathVariable String phone) {
+        AdminService.OtpInfo info = adminService.getLastOtp(phone);
+        if (info.otp() == null || info.otp().isBlank()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse("OTP not found or expired"));
+        }
+        return ResponseEntity.ok(info);
+    }
+
+    // Получить последние OTP (без ввода номера)
+    @GetMapping("/otp/recent")
+    public ResponseEntity<?> getRecentOtps() {
+        return ResponseEntity.ok(adminService.getRecentOtps());
+    }
+
     @Data
     public static class RejectRequest {
         private String reason;

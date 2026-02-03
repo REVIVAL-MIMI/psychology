@@ -6,6 +6,7 @@ export type AuthState = {
   userRole: UserRole;
   fullName: string;
   phone: string;
+  verified?: boolean;
 };
 
 const STORAGE_KEY = "psychology.auth";

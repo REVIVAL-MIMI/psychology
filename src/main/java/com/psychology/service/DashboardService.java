@@ -101,7 +101,6 @@ public class DashboardService {
         psychologistInfo.setId(psychologist.getId());
         psychologistInfo.setFullName(psychologist.getFullName());
         psychologistInfo.setSpecialization(psychologist.getSpecialization());
-        psychologistInfo.setPhotoUrl(psychologist.getPhotoUrl());
         psychologistInfo.setEmail(psychologist.getEmail());
         dashboard.setPsychologist(psychologistInfo);
 

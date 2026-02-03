@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -30,9 +32,13 @@ public interface SessionRepository extends JpaRepository<Session, Long> {
 
     @Query("SELECT COUNT(s) FROM Session s WHERE s.status = :status AND s.scheduledAt BETWEEN :start AND :end")
     long countByStatusAndDateTimeBetween(
-            @Param("status") String status,
+            @Param("status") Session.SessionStatus status,
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end);
 
     List<Session> findByScheduledAtBetween(LocalDateTime start, LocalDateTime end);
+
+    @Modifying
+    @Transactional
+    void deleteByClientId(Long clientId);
 }

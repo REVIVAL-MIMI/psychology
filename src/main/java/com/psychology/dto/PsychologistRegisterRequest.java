@@ -22,5 +22,4 @@ public class PsychologistRegisterRequest {
     private String education;
     private String specialization;
     private String description;
-    private String photoUrl;
 }

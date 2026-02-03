@@ -31,6 +31,7 @@ public class AuthDTO {
         private String userRole;
         private String fullName;
         private String phone;
+        private Boolean verified;
     }
 
     @Data
@@ -51,7 +52,6 @@ public class AuthDTO {
         private String education;
         private String specialization;
         private String description;
-        private String photoUrl;
     }
 
     @Data
@@ -67,14 +67,27 @@ public class AuthDTO {
 
         @NotNull
         private Integer age;
-
-        private String photoUrl;
     }
 
     @Data
     public static class RefreshTokenRequest {
         @NotBlank
         private String refreshToken;
+    }
+
+    @Data
+    public static class AdminLoginRequest {
+        @NotBlank
+        private String login;
+
+        @NotBlank
+        private String password;
+    }
+
+    @Data
+    public static class AdminLoginResponse {
+        private String accessToken;
+        private String userRole;
     }
 
     @Data

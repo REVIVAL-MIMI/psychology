@@ -16,4 +16,5 @@ public class AuthResponse {
     private String userRole;
     private String fullName;
     private String phone;
+    private Boolean verified;
 }

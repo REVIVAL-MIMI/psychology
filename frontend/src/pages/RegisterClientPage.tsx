@@ -2,13 +2,13 @@ import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { formatPhone, normalizePhone } from "../lib/phone";
 
 const initialForm = {
   phone: "",
   otp: "",
   fullName: "",
-  age: "",
-  photoUrl: ""
+  age: ""
 };
 
 type InviteValidation = {
@@ -43,7 +43,7 @@ export default function RegisterClientPage() {
     setLoading(true);
     setError(null);
     try {
-      await api.post("/auth/send-otp", { phone: form.phone }, { skipAuth: true });
+      await api.post("/auth/send-otp", { phone: normalizePhone(form.phone) }, { skipAuth: true });
     } catch {
       setError("Не удалось отправить код. Проверьте номер.");
     } finally {
@@ -56,11 +56,10 @@ export default function RegisterClientPage() {
     setError(null);
     try {
       const payload = {
-        phone: form.phone,
+        phone: normalizePhone(form.phone),
         otp: form.otp,
         fullName: form.fullName,
-        age: Number(form.age),
-        photoUrl: form.photoUrl || undefined
+        age: Number(form.age)
       };
       const data = await api.post(
         `/auth/client/register?inviteToken=${encodeURIComponent(inviteToken)}`,
@@ -109,7 +108,13 @@ export default function RegisterClientPage() {
         <div className="form">
           <label>
             Номер телефона
-            <input type="tel" value={form.phone} onChange={update("phone")} placeholder="+79990000000" />
+            <input
+              type="tel"
+              value={form.phone}
+              onChange={(e) => setForm((prev) => ({ ...prev, phone: formatPhone(e.target.value) }))}
+              placeholder="+7 (999) 000-00-00"
+              inputMode="tel"
+            />
           </label>
           <div className="row">
             <button className="button ghost" onClick={sendOtp} disabled={loading || !form.phone}>
@@ -127,10 +132,6 @@ export default function RegisterClientPage() {
           <label>
             Возраст
             <input type="number" value={form.age} onChange={update("age")} />
-          </label>
-          <label>
-            Фото (URL)
-            <input value={form.photoUrl} onChange={update("photoUrl")} placeholder="https://" />
           </label>
 
           {error && <div className="error">{error}</div>}

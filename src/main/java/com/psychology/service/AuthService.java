@@ -4,6 +4,7 @@ import com.psychology.dto.AuthDTO.*;
 import com.psychology.model.entity.Client;
 import com.psychology.model.entity.Invite;
 import com.psychology.model.entity.Psychologist;
+import com.psychology.model.entity.User;
 import com.psychology.model.entity.UserRole;
 import com.psychology.repository.ClientRepository;
 import com.psychology.repository.InviteRepository;
@@ -47,14 +48,14 @@ public class AuthService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         // ВАЖНО: Проверяем верификацию для психологов
-//        if (user instanceof Psychologist psychologist && !psychologist.isVerified()) {
-//            throw new RuntimeException("Psychologist account is pending verification by administrator");
-//        }
+        if (user instanceof Psychologist psychologist && !psychologist.isVerified()) {
+            throw new RuntimeException("Psychologist account is pending verification by administrator");
+        }
 
         log.info("User authenticated: {} with role {}", user.getPhone(), user.getRole());
 
         // Генерируем токены
-        return generateAuthResponse(user);
+        return generateAuthForUser(user);
     }
 
     public AuthResult refreshToken(String refreshToken) {
@@ -87,7 +88,7 @@ public class AuthService {
         );
 
         // Генерируем новую пару токенов
-        return generateAuthResponse(user);
+        return generateAuthForUser(user);
     }
 
     public AuthResult registerPsychologist(PsychologistRegisterRequest request) {
@@ -104,13 +105,12 @@ public class AuthService {
         psychologist.setEducation(request.getEducation());
         psychologist.setSpecialization(request.getSpecialization());
         psychologist.setDescription(request.getDescription());
-        psychologist.setPhotoUrl(request.getPhotoUrl());
         psychologist.setRole(UserRole.ROLE_PSYCHOLOGIST);
         psychologist.setVerified(false); // Требуется верификация админом
 
         psychologistRepository.save(psychologist);
 
-        return generateAuthResponse(psychologist);
+        return generateAuthForUser(psychologist);
     }
 
     public AuthResult registerClient(ClientRegisterRequest request, String inviteToken) {
@@ -136,7 +136,6 @@ public class AuthService {
         client.setPhone(request.getPhone());
         client.setFullName(request.getFullName());
         client.setAge(request.getAge());
-        client.setPhotoUrl(request.getPhotoUrl());
         client.setPsychologist(invite.getPsychologist());
         client.setLinkedAt(LocalDateTime.now());
         client.setRole(UserRole.ROLE_CLIENT);
@@ -148,7 +147,7 @@ public class AuthService {
         invite.setUsedAt(LocalDateTime.now());
         inviteRepository.save(invite);
 
-        return generateAuthResponse(client);
+        return generateAuthForUser(client);
     }
 
 
@@ -177,7 +176,7 @@ public class AuthService {
         }
     }
 
-    private AuthResult generateAuthResponse(com.psychology.model.entity.User user) {
+    public AuthResult generateAuthForUser(com.psychology.model.entity.User user) {
         // Создаем UserDetails для генерации токена
         UserDetails userDetails = org.springframework.security.core.userdetails.User
                 .withUsername(user.getPhone())
@@ -202,8 +201,28 @@ public class AuthService {
         response.setUserRole(user.getRole().name());
         response.setFullName(getFullName(user));
         response.setPhone(user.getPhone());
+        response.setVerified(user instanceof Psychologist psych && psych.isVerified());
 
         return new AuthResult(response, refreshToken);
+    }
+
+    public AuthResult changePhone(User user, String newPhone, String otp) {
+        if (!otpService.verifyOTP(newPhone, otp)) {
+            throw new RuntimeException("Invalid OTP");
+        }
+
+        if (userRepository.existsByPhone(newPhone)) {
+            throw new RuntimeException("Phone already registered");
+        }
+
+        String oldPhone = user.getPhone();
+        user.setPhone(newPhone);
+        userRepository.save(user);
+
+        // Сбрасываем старый refresh token
+        stringRedisTemplate.delete(REFRESH_PREFIX + oldPhone);
+
+        return generateAuthForUser(user);
     }
 
     private String getFullName(com.psychology.model.entity.User user) {

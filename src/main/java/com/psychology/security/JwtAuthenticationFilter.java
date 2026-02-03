@@ -1,6 +1,7 @@
 package com.psychology.security;
 
 import com.psychology.model.entity.User;
+import com.psychology.model.entity.Psychologist;
 import com.psychology.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -15,6 +16,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -27,6 +29,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final StringRedisTemplate stringRedisTemplate;
 
     private static final String BLACKLIST_PREFIX = "blacklist:";
+
+    @Value("${admin.login:admin}")
+    private String adminLogin;
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -81,6 +86,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         .orElse(null);
 
                 if (user != null) {
+                    if (user instanceof Psychologist psychologist && !psychologist.isVerified()) {
+                        if (!isVerificationAllowedEndpoint(requestUri)) {
+                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                            response.getWriter().write("Psychologist account is pending verification");
+                            return;
+                        }
+                    }
                     log.debug("Loaded user: ID={}, Role={}", user.getId(), user.getRole());
 
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
@@ -91,6 +103,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                     log.debug("Authentication set successfully for user: {}", phone);
+                } else if (phone.equals(adminLogin)) {
+                    var adminUser = org.springframework.security.core.userdetails.User
+                            .withUsername(adminLogin)
+                            .password("")
+                            .roles("ADMIN")
+                            .build();
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                            adminUser,
+                            null,
+                            adminUser.getAuthorities()
+                    );
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                    log.debug("Authentication set successfully for admin: {}", adminLogin);
                 }
             }
         } catch (Exception e) {
@@ -102,10 +128,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private boolean isPublicEndpoint(String requestUri) {
         return requestUri.startsWith("/api/v1/auth/") ||
+                requestUri.startsWith("/api/v1/admin/login") ||
+                requestUri.startsWith("/api/v1/admin/refresh") ||
+                requestUri.equals("/admin.html") ||
+                requestUri.equals("/admin-login.html") ||
+                requestUri.equals("/favicon.ico") ||
+                requestUri.startsWith("/static/") ||
                 requestUri.startsWith("/api/v1/invites/validate/") ||
                 requestUri.startsWith("/api/v1/test/") ||
                 requestUri.startsWith("/api/v1/debug/") ||
                 requestUri.startsWith("/ws-chat") ||
                 requestUri.equals("/error");
+    }
+
+    private boolean isVerificationAllowedEndpoint(String requestUri) {
+        return requestUri.startsWith("/api/v1/profile/verification-status") ||
+                requestUri.startsWith("/api/v1/auth/logout") ||
+                requestUri.startsWith("/api/v1/auth/refresh");
     }
 }

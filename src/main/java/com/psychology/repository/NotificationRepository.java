@@ -38,4 +38,8 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     List<Notification> findByUserAndTypeAndRelatedEntityId(@Param("user") User user,
                                                            @Param("type") Notification.NotificationType type,
                                                            @Param("relatedEntityId") Long relatedEntityId);
+
+    @Modifying
+    @Query("DELETE FROM Notification n WHERE n.user.id = :userId")
+    void deleteByUserId(@Param("userId") Long userId);
 }

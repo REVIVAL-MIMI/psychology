@@ -29,7 +29,7 @@ public class FileStorageService {
         // Проверяем тип файла
         String contentType = file.getContentType();
         if (!isAllowedFileType(contentType)) {
-            throw new RuntimeException("File type not allowed. Allowed: images, PDF, DOC, DOCX");
+            throw new RuntimeException("File type not allowed. Allowed: PDF, DOC, DOCX");
         }
 
         // Создаем директорию, если не существует
@@ -53,8 +53,7 @@ public class FileStorageService {
 
     private boolean isAllowedFileType(String contentType) {
         return contentType != null && (
-                contentType.startsWith("image/") ||
-                        contentType.equals("application/pdf") ||
+                contentType.equals("application/pdf") ||
                         contentType.equals("application/msword") ||
                         contentType.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document")
         );

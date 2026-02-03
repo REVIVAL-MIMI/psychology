@@ -1,12 +1,16 @@
 import { ChangeEvent, useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { formatPhone, normalizePhone } from "../lib/phone";
 
 export default function ProfilePage() {
-  const { auth } = useAuth();
+  const { auth, setAuth } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [form, setForm] = useState<any>({});
   const [status, setStatus] = useState<string | null>(null);
+  const [phoneForm, setPhoneForm] = useState({ phone: "", otp: "" });
+  const [phoneStatus, setPhoneStatus] = useState<string | null>(null);
+  const [phoneLoading, setPhoneLoading] = useState(false);
 
   useEffect(() => {
     api.get("/profile").then((data) => {
@@ -24,6 +28,41 @@ export default function ProfilePage() {
     const endpoint = auth?.userRole === "ROLE_PSYCHOLOGIST" ? "/profile/psychologist" : "/profile/client";
     await api.put(endpoint, form);
     setStatus("Сохранено");
+  };
+
+  const sendPhoneOtp = async () => {
+    setPhoneLoading(true);
+    setPhoneStatus(null);
+    try {
+      await api.post("/profile/phone/send-otp", { phone: normalizePhone(phoneForm.phone) });
+      setPhoneStatus("Код отправлен");
+    } catch {
+      setPhoneStatus("Не удалось отправить код");
+    } finally {
+      setPhoneLoading(false);
+    }
+  };
+
+  const confirmPhone = async () => {
+    setPhoneLoading(true);
+    setPhoneStatus(null);
+    try {
+      const data = await api.post("/profile/phone/confirm", {
+        phone: normalizePhone(phoneForm.phone),
+        otp: phoneForm.otp
+      });
+      // обновляем auth в localStorage через setAuth в контексте
+      if (auth) {
+        const next = { ...auth, ...data };
+        setForm((prev: any) => ({ ...prev, phone: data.phone }));
+        setPhoneStatus("Номер обновлен");
+        setAuth(next);
+      }
+    } catch {
+      setPhoneStatus("Не удалось обновить номер");
+    } finally {
+      setPhoneLoading(false);
+    }
   };
 
   return (
@@ -70,14 +109,43 @@ export default function ProfilePage() {
                 <input type="number" value={form.age ?? ""} onChange={update("age")} />
               </label>
             )}
-            <label>
-              Фото (URL)
-              <input value={form.photoUrl ?? ""} onChange={update("photoUrl")} />
-            </label>
           </div>
         )}
         <button className="button" onClick={save}>Сохранить</button>
         {status && <div className="muted">{status}</div>}
+      </div>
+
+      <div className="card">
+        <h3>Сменить номер телефона</h3>
+        <div className="form grid-2">
+          <label>
+            Новый номер
+            <input
+              type="tel"
+              value={phoneForm.phone}
+              onChange={(e) => setPhoneForm((prev) => ({ ...prev, phone: formatPhone(e.target.value) }))}
+              placeholder="+7 (999) 000-00-00"
+              inputMode="tel"
+            />
+          </label>
+          <label>
+            Код из SMS
+            <input
+              value={phoneForm.otp}
+              onChange={(e) => setPhoneForm((prev) => ({ ...prev, otp: e.target.value }))}
+              placeholder="123456"
+            />
+          </label>
+        </div>
+        <div className="row">
+          <button className="button ghost" onClick={sendPhoneOtp} disabled={phoneLoading || !phoneForm.phone}>
+            {phoneLoading ? "Отправляем…" : "Отправить код"}
+          </button>
+          <button className="button" onClick={confirmPhone} disabled={phoneLoading || !phoneForm.phone || !phoneForm.otp}>
+            {phoneLoading ? "Сохраняем…" : "Подтвердить"}
+          </button>
+        </div>
+        {phoneStatus && <div className="muted">{phoneStatus}</div>}
       </div>
     </div>
   );
