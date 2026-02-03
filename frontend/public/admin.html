@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin Panel</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap");
+
+      :root {
+        --bg: #0e1113;
+        --panel: #15191d;
+        --text: #f2ede6;
+        --muted: #b5ada3;
+        --accent: #8ec0b1;
+        --accent-ink: #0c1114;
+        --ok: #6be4a7;
+        --warn: #ffb86b;
+        --danger: #ff6b6b;
+        --border: #2a3234;
+        --shadow: 0 22px 46px rgba(0,0,0,0.5);
+        --grad-1: #16312b;
+        --grad-2: #3b2f21;
+        --grad-3: #1c2431;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        background:
+          radial-gradient(900px 420px at 80% -10%, var(--grad-1), transparent 60%),
+          radial-gradient(700px 360px at 10% 10%, var(--grad-2), transparent 65%),
+          radial-gradient(520px 340px at 50% 95%, var(--grad-3), transparent 62%),
+          var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      }
+
+      .title {
+        font-size: 22px;
+        font-weight: 700;
+        font-family: "Fraunces", serif;
+      }
+
+      .row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 18px;
+        margin-bottom: 16px;
+        box-shadow: var(--shadow);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .card::after {
+        content: "";
+        position: absolute;
+        width: 160px;
+        height: 160px;
+        right: -40px;
+        top: -60px;
+        background: radial-gradient(circle, rgba(142, 192, 177, 0.18), transparent 65%);
+        border-radius: 999px;
+        filter: blur(4px);
+      }
+
+      button {
+        padding: 10px 14px;
+        border-radius: 12px;
+        border: 0;
+        background: var(--accent);
+        color: var(--accent-ink);
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      button.secondary {
+        background: #20262a;
+        color: var(--text);
+        border: 1px solid var(--border);
+      }
+
+      button.warn { background: var(--warn); color: #0b1220; }
+      button.danger { background: var(--danger); color: #0b1220; }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
+
+      th, td {
+        border-bottom: 1px solid var(--border);
+        padding: 8px;
+        text-align: left;
+        vertical-align: top;
+        font-size: 13px;
+      }
+
+      th { color: var(--muted); font-weight: 600; }
+
+      .status { font-size: 13px; margin-top: 8px; }
+      .status.ok { color: var(--ok); }
+      .status.err { color: var(--danger); }
+      .muted { color: var(--muted); font-size: 12px; }
+
+      .pill {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: #1f262a;
+        color: var(--text);
+        font-size: 11px;
+        border: 1px solid var(--border);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="title">Admin Panel</div>
+      <div class="row">
+        <button id="refreshBtn">Обновить</button>
+        <button id="loginBtn" class="secondary">Перейти к логину</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div class="pill">JWT</div>
+        <div id="tokenStatus" class="muted">Токен не найден. Открой /admin-login.html и войди.</div>
+      </div>
+      <div id="status" class="status"></div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div class="pill">Stats</div>
+      </div>
+      <div id="stats" class="muted">—</div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div class="pill">Pending Psychologists</div>
+      </div>
+      <div id="pendingWrap" class="muted">Загрузка...</div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div class="pill">Последние OTP</div>
+      </div>
+      <div id="otpList" class="muted">Загрузка...</div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div class="pill">All Psychologists</div>
+      </div>
+      <div id="allWrap" class="muted">Загрузка...</div>
+    </div>
+
+    <script>
+      const statusEl = document.getElementById("status");
+      const tokenStatusEl = document.getElementById("tokenStatus");
+      const statsEl = document.getElementById("stats");
+      const pendingWrap = document.getElementById("pendingWrap");
+      const allWrap = document.getElementById("allWrap");
+
+      function setStatus(text, ok) {
+        statusEl.textContent = text;
+        statusEl.className = "status " + (ok ? "ok" : "err");
+      }
+
+      function getToken() {
+        return localStorage.getItem("adminAccessToken");
+      }
+
+      function authHeaders() {
+        const token = getToken();
+        if (!token) return null;
+        return { "Authorization": "Bearer " + token };
+      }
+
+      function renderTable(items, mode) {
+        if (!items || items.length === 0) return "<div class='muted'>Пусто</div>";
+        const rows = items.map(p => `
+          <tr>
+            <td>${p.id}</td>
+            <td>${p.fullName || "-"}</td>
+            <td>${p.email || "-"}</td>
+            <td>${p.phone || "-"}</td>
+            <td>${p.specialization || "-"}</td>
+            <td>${p.verified ? "Да" : "Нет"}</td>
+            <td>
+              ${mode === "pending" ? `
+                <div class="row">
+                  <button class="warn" onclick="verify(${p.id})">Подтвердить</button>
+                  <button class="danger" onclick="rejectPsych(${p.id})">Отклонить</button>
+                </div>
+              ` : "-"}
+            </td>
+          </tr>
+        `).join("");
+
+        return `
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>ФИО</th>
+                <th>Email</th>
+                <th>Телефон</th>
+                <th>Специализация</th>
+                <th>Verified</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        `;
+      }
+
+      async function fetchJson(url, options = {}) {
+        const headers = authHeaders();
+        if (!headers) throw new Error("NO_TOKEN");
+        const res = await fetch(url, { ...options, headers: { ...headers, ...(options.headers || {}) } });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const msg = data.message || "Request failed";
+          throw new Error(msg);
+        }
+        return data;
+      }
+
+      async function loadData() {
+        const token = getToken();
+        if (!token) {
+          tokenStatusEl.textContent = "Токен не найден. Открой /admin-login.html и войди.";
+          setStatus("Нет токена", false);
+          pendingWrap.innerHTML = "<div class='muted'>Нет токена</div>";
+          allWrap.innerHTML = "<div class='muted'>Нет токена</div>";
+          return;
+        }
+        tokenStatusEl.textContent = "Токен найден в localStorage (adminAccessToken).";
+
+        try {
+          const stats = await fetchJson("/api/v1/admin/stats");
+          statsEl.textContent = JSON.stringify(stats);
+
+          const pending = await fetchJson("/api/v1/admin/psychologists/pending");
+          pendingWrap.innerHTML = renderTable(pending, "pending");
+
+          const all = await fetchJson("/api/v1/admin/psychologists");
+          allWrap.innerHTML = renderTable(all, "all");
+
+          setStatus("Данные загружены", true);
+        } catch (e) {
+          if (e.message === "NO_TOKEN") {
+            setStatus("Нет токена", false);
+          } else {
+            setStatus("Ошибка: " + e.message, false);
+          }
+        }
+      }
+
+      async function loadOtpList() {
+        try {
+          const data = await fetchJson(`/api/v1/admin/otp/recent`);
+          if (!data || data.length === 0) {
+            document.getElementById("otpList").innerHTML = "<div class='muted'>Пока пусто</div>";
+            return;
+          }
+          const rows = data.map((o) => {
+            const time = o.timestampMs ? new Date(o.timestampMs).toLocaleTimeString() : "";
+            return `<div class='row' style='justify-content:space-between; border-bottom:1px solid var(--border); padding:6px 0;'>
+              <div>${o.phone}</div>
+              <div><strong>${o.otp}</strong></div>
+              <div class='muted'>${time}</div>
+            </div>`;
+          }).join("");
+          document.getElementById("otpList").innerHTML = rows;
+        } catch (e) {
+          document.getElementById("otpList").innerHTML = "<div class='muted'>Ошибка загрузки OTP</div>";
+        }
+      }
+
+      async function verify(id) {
+        try {
+          await fetchJson(`/api/v1/admin/psychologists/${id}/verify`, { method: "POST" });
+          setStatus("Психолог подтвержден", true);
+          await loadData();
+        } catch (e) {
+          setStatus("Ошибка: " + e.message, false);
+        }
+      }
+
+      async function rejectPsych(id) {
+        const reason = prompt("Причина отказа (можно оставить пустым):", "");
+        if (reason === null) return;
+        try {
+          await fetchJson(`/api/v1/admin/psychologists/${id}/reject`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ reason })
+          });
+          setStatus("Психолог отклонен", true);
+          await loadData();
+        } catch (e) {
+          setStatus("Ошибка: " + e.message, false);
+        }
+      }
+
+      window.verify = verify;
+      window.rejectPsych = rejectPsych;
+
+      document.getElementById("refreshBtn").addEventListener("click", () => {
+        loadData();
+        loadOtpList();
+      });
+      document.getElementById("loginBtn").addEventListener("click", () => {
+        window.location.href = "/admin-login.html";
+      });
+
+      loadData();
+      loadOtpList();
+      setInterval(loadOtpList, 5000);
+    </script>
+  </body>
+</html>
