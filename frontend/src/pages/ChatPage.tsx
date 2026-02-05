@@ -15,12 +15,24 @@ export default function ChatPage() {
   const [incomingOffer, setIncomingOffer] = useState<any | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [screenSharing, setScreenSharing] = useState(false);
+  const [ringtoneOn, setRingtoneOn] = useState(false);
+  const [ringbackOn, setRingbackOn] = useState(false);
+  const [videoEnabled, setVideoEnabled] = useState(true);
+  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [callExpanded, setCallExpanded] = useState(false);
   const typingTimer = useRef<number | null>(null);
   const lastTypingSent = useRef<number>(0);
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
-  const endRef = useRef<HTMLDivElement | null>(null);
+  const messagesRef = useRef<HTMLDivElement | null>(null);
+  const callPanelRef = useRef<HTMLDivElement | null>(null);
+  const ringCtxRef = useRef<AudioContext | null>(null);
+  const ringOscRef = useRef<OscillatorNode | null>(null);
+  const ringGainRef = useRef<GainNode | null>(null);
+  const ringbackTimerRef = useRef<number | null>(null);
+  const videoSenderRef = useRef<RTCRtpSender | null>(null);
 
   const userId = useMemo(() => auth?.userId ?? null, [auth]);
   const activeContact = useMemo(
@@ -71,17 +83,59 @@ export default function ChatPage() {
     setRemoteStream(null);
     setIncomingOffer(null);
     setCallState("idle");
+    setScreenSharing(false);
+    setCallExpanded(false);
+    stopRingtone();
+    stopRingback();
   };
 
-  const initPeer = async (receiverId: number) => {
+  const getIceServers = () => {
+    const env = (import.meta as any).env ?? {};
+    const turnUrl = env.VITE_TURN_URL as string | undefined;
+    const turnUser = env.VITE_TURN_USER as string | undefined;
+    const turnPass = env.VITE_TURN_PASS as string | undefined;
+    const iceServers: RTCIceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
+    if (turnUrl) {
+      const urls = turnUrl.split(",").map((u) => u.trim()).filter(Boolean);
+      iceServers.push({
+        urls: urls.length ? urls : turnUrl,
+        username: turnUser,
+        credential: turnPass
+      });
+    }
+    return iceServers;
+  };
+
+  const initPeer = async (receiverId: number, videoOn: boolean) => {
     const pc = new RTCPeerConnection({
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+      iceServers: getIceServers()
     });
     peerRef.current = pc;
 
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+    const videoTransceiver = pc.addTransceiver("video", { direction: "sendrecv" });
+    videoSenderRef.current = videoTransceiver.sender;
+
+    const stream = new MediaStream();
+    const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    const audioTrack = audioStream.getAudioTracks()[0];
+    if (audioTrack) {
+      audioTrack.enabled = audioEnabled;
+      stream.addTrack(audioTrack);
+      pc.addTrack(audioTrack, stream);
+    }
+
+    if (videoOn) {
+      const videoStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
+      const videoTrack = videoStream.getVideoTracks()[0];
+      if (videoTrack) {
+        stream.addTrack(videoTrack);
+        await videoTransceiver.sender.replaceTrack(videoTrack);
+      }
+    } else {
+      await videoTransceiver.sender.replaceTrack(null);
+    }
+
     setLocalStream(stream);
-    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
     pc.onicecandidate = (event) => {
       if (!event.candidate) return;
@@ -115,11 +169,13 @@ export default function ChatPage() {
     return pc;
   };
 
-  const startCall = async () => {
+  const startCall = async (withVideo: boolean) => {
     if (!activeId || callState !== "idle") return;
     try {
       setCallState("calling");
-      const pc = await initPeer(activeId);
+      startRingback();
+      setVideoEnabled(withVideo);
+      const pc = await initPeer(activeId, withVideo);
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       publishWs("/app/call.offer", { receiverId: activeId, sdp: offer.sdp, type: offer.type });
@@ -132,8 +188,9 @@ export default function ChatPage() {
     if (!incomingOffer) return;
     try {
       setCallState("in-call");
+      stopRingtone();
       const senderId = incomingOffer.senderId;
-      const pc = await initPeer(senderId);
+      const pc = await initPeer(senderId, videoEnabled);
       await pc.setRemoteDescription(new RTCSessionDescription({ type: "offer", sdp: incomingOffer.sdp }));
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
@@ -156,6 +213,181 @@ export default function ChatPage() {
       publishWs("/app/call.hangup", { receiverId: targetId, reason: "hangup" });
     }
     cleanupCall();
+  };
+
+  const ensureAudio = () => {
+    if (!ringCtxRef.current) {
+      ringCtxRef.current = new AudioContext();
+    }
+  };
+
+  const playTone = (freq: number, gainValue: number) => {
+    ensureAudio();
+    const ctx = ringCtxRef.current!;
+    if (ctx.state === "suspended") {
+      ctx.resume().catch(() => null);
+    }
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = freq;
+    gain.gain.value = gainValue;
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    ringOscRef.current = osc;
+    ringGainRef.current = gain;
+  };
+
+  const stopTone = () => {
+    ringOscRef.current?.stop();
+    ringOscRef.current?.disconnect();
+    ringGainRef.current?.disconnect();
+    ringOscRef.current = null;
+    ringGainRef.current = null;
+  };
+
+  const startRingtone = () => {
+    if (ringtoneOn) return;
+    setRingtoneOn(true);
+    playTone(680, 0.04);
+  };
+
+  const stopRingtone = () => {
+    setRingtoneOn(false);
+    stopTone();
+  };
+
+  const startRingback = () => {
+    if (ringbackOn) return;
+    setRingbackOn(true);
+    const pattern = () => {
+      playTone(440, 0.04);
+      ringbackTimerRef.current = window.setTimeout(() => {
+        stopTone();
+        ringbackTimerRef.current = window.setTimeout(pattern, 900);
+      }, 900);
+    };
+    pattern();
+  };
+
+  const stopRingback = () => {
+    setRingbackOn(false);
+    if (ringbackTimerRef.current) {
+      window.clearTimeout(ringbackTimerRef.current);
+      ringbackTimerRef.current = null;
+    }
+    stopTone();
+  };
+
+  const startScreenShare = async () => {
+    if (screenSharing || !peerRef.current) return;
+    try {
+      const display = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      const screenTrack = display.getVideoTracks()[0];
+      const sender = peerRef.current
+        .getSenders()
+        .find((s) => s.track && s.track.kind === "video");
+      if (sender && screenTrack) {
+        await sender.replaceTrack(screenTrack);
+        setScreenSharing(true);
+        screenTrack.onended = () => {
+          stopScreenShare();
+        };
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const stopScreenShare = async () => {
+    if (!screenSharing || !peerRef.current || !localStream) {
+      setScreenSharing(false);
+      return;
+    }
+    const videoTrack = localStream.getVideoTracks()[0];
+    const sender = peerRef.current
+      .getSenders()
+      .find((s) => s.track && s.track.kind === "video");
+    if (sender && videoTrack) {
+      await sender.replaceTrack(videoTrack);
+    }
+    setScreenSharing(false);
+  };
+
+  const toggleAudio = () => {
+    if (!localStream) {
+      setAudioEnabled((prev) => !prev);
+      return;
+    }
+    const next = !audioEnabled;
+    localStream.getAudioTracks().forEach((track) => {
+      track.enabled = next;
+    });
+    setAudioEnabled(next);
+  };
+
+  const enableVideo = async () => {
+    if (!peerRef.current) return;
+    try {
+      const cam = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      const camTrack = cam.getVideoTracks()[0];
+      const sender = videoSenderRef.current
+        ?? peerRef.current.getSenders().find((s) => s.track && s.track.kind === "video")
+        ?? null;
+      if (sender && camTrack) {
+        await sender.replaceTrack(camTrack);
+      } else if (camTrack) {
+        peerRef.current.addTrack(camTrack, cam);
+      }
+      setLocalStream((prev) => {
+        const next = prev ? new MediaStream(prev.getTracks()) : new MediaStream();
+        if (camTrack) next.addTrack(camTrack);
+        return next;
+      });
+      setVideoEnabled(true);
+    } catch {
+      // ignore
+    }
+  };
+
+  const disableVideo = async () => {
+    if (!localStream) {
+      setVideoEnabled(false);
+      return;
+    }
+    localStream.getVideoTracks().forEach((track) => {
+      track.stop();
+    });
+    const sender = videoSenderRef.current
+      ?? peerRef.current?.getSenders().find((s) => s.track && s.track.kind === "video")
+      ?? null;
+    if (sender) {
+      await sender.replaceTrack(null);
+    }
+    setLocalStream((prev) => {
+      if (!prev) return prev;
+      const next = new MediaStream(prev.getTracks().filter((t) => t.kind !== "video"));
+      return next;
+    });
+    setVideoEnabled(false);
+  };
+
+  const toggleVideo = () => {
+    if (videoEnabled) {
+      disableVideo();
+    } else {
+      enableVideo();
+    }
+  };
+
+  const toggleFullscreen = () => {
+    const el = callPanelRef.current;
+    if (!el) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.().catch(() => null);
+      return;
+    }
+    el.requestFullscreen?.().catch(() => null);
   };
 
   useEffect(() => {
@@ -263,12 +495,14 @@ export default function ChatPage() {
           publishWs("/app/call.hangup", { receiverId: payload.senderId, reason: "busy" });
           return;
         }
+        startRingtone();
         setIncomingOffer(payload);
         setCallState("incoming");
       }
       if (payload.type === "answer" && peerRef.current) {
         await peerRef.current.setRemoteDescription(new RTCSessionDescription({ type: "answer", sdp: payload.sdp }));
         setCallState("in-call");
+        stopRingback();
       }
       if (payload.type === "ice" && peerRef.current && payload.candidate) {
         await peerRef.current.addIceCandidate(new RTCIceCandidate({
@@ -291,7 +525,11 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!activeId) return;
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (!messagesRef.current) return;
+    const el = messagesRef.current;
+    window.requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
   }, [messages, activeId]);
 
   const sendTyping = (isTyping: boolean) => {
@@ -344,7 +582,6 @@ export default function ChatPage() {
     <div className="page chat-page">
       <div className="page-header">
         <h1>Чат</h1>
-        <p className="muted">Безопасное общение с вашими клиентами/психологом.</p>
       </div>
 
       <div className="chat-layout">
@@ -380,7 +617,12 @@ export default function ChatPage() {
                   </div>
                 </div>
                 <div className="chat-actions">
-                  <button className="button ghost" onClick={startCall} disabled={callState !== "idle"}>Позвонить</button>
+                  <button className="icon-button" onClick={() => startCall(false)} disabled={callState !== "idle"} aria-label="Звонок">
+                    <span className="icon-phone" aria-hidden="true" />
+                  </button>
+                  <button className="icon-button" onClick={() => startCall(true)} disabled={callState !== "idle"} aria-label="Видеозвонок">
+                    <span className="icon-video" aria-hidden="true" />
+                  </button>
                   {callState !== "idle" && (
                     <button className="button ghost" onClick={endCall}>Завершить</button>
                   )}
@@ -388,13 +630,30 @@ export default function ChatPage() {
               </div>
 
               {(callState === "calling" || callState === "in-call") && (
-                <div className="call-panel">
+                <div ref={callPanelRef} className={`call-panel ${callExpanded ? "expanded" : ""}`}>
                   <video ref={remoteVideoRef} className="video-remote" autoPlay playsInline />
                   <video ref={localVideoRef} className="video-local" autoPlay playsInline muted />
+                  <div className="call-controls">
+                    <button className="icon-button" onClick={toggleAudio} aria-label="Микрофон">
+                      <span className={audioEnabled ? "icon-mic" : "icon-mic-off"} aria-hidden="true" />
+                    </button>
+                    <button className="icon-button" onClick={toggleVideo} aria-label="Камера">
+                      <span className={videoEnabled ? "icon-video" : "icon-video-off"} aria-hidden="true" />
+                    </button>
+                    <button className="icon-button" onClick={screenSharing ? stopScreenShare : startScreenShare} aria-label="Экран">
+                      <span className="icon-screen" aria-hidden="true" />
+                    </button>
+                    <button className="icon-button" onClick={() => setCallExpanded((prev) => !prev)} aria-label="Увеличить">
+                      <span className="icon-expand" aria-hidden="true" />
+                    </button>
+                    <button className="icon-button" onClick={toggleFullscreen} aria-label="На весь экран">
+                      <span className="icon-fullscreen" aria-hidden="true" />
+                    </button>
+                  </div>
                 </div>
               )}
 
-              <div className="chat-messages">
+              <div className="chat-messages" ref={messagesRef}>
                 {messages.map((m) => (
                   <div
                     key={m.id}
@@ -412,7 +671,6 @@ export default function ChatPage() {
                     <div className="message-time">{new Date(m.sentAt).toLocaleTimeString()}</div>
                   </div>
                 ))}
-                <div ref={endRef} />
                 {typing && <div className="typing-indicator">… собеседник печатает</div>}
               </div>
               <div className="chat-input">

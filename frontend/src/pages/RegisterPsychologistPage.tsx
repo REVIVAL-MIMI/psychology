@@ -21,6 +21,7 @@ export default function RegisterPsychologistPage() {
   const [stage, setStage] = useState<"phone" | "profile">("phone");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [consent, setConsent] = useState(false);
 
   const update = (key: keyof typeof form) => (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
@@ -104,6 +105,16 @@ export default function RegisterPsychologistPage() {
                 Описание
                 <textarea value={form.description} onChange={update("description")} rows={4} />
               </label>
+              <label className="checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={consent}
+                  onChange={(e) => setConsent(e.target.checked)}
+                />
+                <span>
+                  Я принимаю условия пользовательского соглашения и даю согласие на обработку персональных данных.
+                </span>
+              </label>
             </>
           )}
 
@@ -114,7 +125,11 @@ export default function RegisterPsychologistPage() {
               {loading ? "Отправляем…" : "Отправить код"}
             </button>
           ) : (
-            <button className="button" onClick={register} disabled={loading || !form.otp || !form.fullName || !form.email}>
+            <button
+              className="button"
+              onClick={register}
+              disabled={loading || !form.otp || !form.fullName || !form.email || !consent}
+            >
               {loading ? "Создаем…" : "Создать профиль"}
             </button>
           )}

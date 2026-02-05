@@ -25,6 +25,7 @@ export default function RegisterClientPage() {
   const [invite, setInvite] = useState<InviteValidation | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [consent, setConsent] = useState(false);
   const inviteToken = useMemo(() => params.get("invite") ?? "", [params]);
 
   const update = (key: keyof typeof form) => (e: ChangeEvent<HTMLInputElement>) => {
@@ -133,13 +134,23 @@ export default function RegisterClientPage() {
             Возраст
             <input type="number" value={form.age} onChange={update("age")} />
           </label>
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={consent}
+              onChange={(e) => setConsent(e.target.checked)}
+            />
+            <span>
+              Я принимаю условия пользовательского соглашения и даю согласие на обработку персональных данных.
+            </span>
+          </label>
 
           {error && <div className="error">{error}</div>}
 
           <button
             className="button"
             onClick={register}
-            disabled={loading || !form.otp || !form.fullName || !form.age}
+            disabled={loading || !form.otp || !form.fullName || !form.age || !consent}
           >
             {loading ? "Создаем…" : "Создать аккаунт"}
           </button>

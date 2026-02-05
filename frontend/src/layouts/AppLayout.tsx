@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../lib/auth";
-import { getStoredTheme, toggleTheme } from "../lib/theme";
 import { api } from "../lib/api";
 
 const navForRole = (role: string) => {
@@ -31,7 +30,6 @@ const navForRole = (role: string) => {
 
 export default function AppLayout() {
   const { auth, logout } = useAuth();
-  const [theme, setTheme] = useState(getStoredTheme());
   const [unreadCount, setUnreadCount] = useState(0);
   const [navBadges, setNavBadges] = useState<{ chat?: number; recommendations?: number; sessions?: number }>({});
   const [latestCounts, setLatestCounts] = useState<{ chat: number; recommendations: number; sessions: number }>({
@@ -62,8 +60,6 @@ export default function AppLayout() {
 
   if (!auth) return null;
   const nav = navForRole(auth.userRole);
-
-  const handleToggle = () => setTheme(toggleTheme());
 
   useEffect(() => {
     if (auth?.userRole === "ROLE_PSYCHOLOGIST" && auth.verified === false) {
@@ -189,43 +185,13 @@ export default function AppLayout() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <div className="brand">
+        <Link to="/" className="brand">
           <span className="brand-mark">Ψ</span>
           <span>Psychology</span>
-        </div>
-        <div className="topbar-actions">
-          {!(auth.userRole === "ROLE_PSYCHOLOGIST" && auth.verified === false) && (
-            <>
-              <Link to="/app/notifications" className="icon-button" aria-label="Уведомления">
-                <span className="icon-bell" aria-hidden="true" />
-                {unreadCount > 0 && <span className="badge-dot" />}
-              </Link>
-              <Link to="/app/profile" className="icon-button" aria-label="Профиль">
-                <span className="icon-user" aria-hidden="true" />
-              </Link>
-            </>
-          )}
-          <div className="user-chip">
-            <div className="user-chip-name">{auth.fullName}</div>
-            <div className="user-chip-sub">{auth.userRole.replace("ROLE_", "")}</div>
-          </div>
-          <button className="button ghost theme-toggle" onClick={handleToggle}>
-            {theme === "dark" ? "Свет" : "Тьма"}
-          </button>
-          <button className="button" onClick={logout}>Выйти</button>
-        </div>
-      </header>
+        </Link>
 
-      <div className="app-body">
-        <aside className="side-rail">
-          <div className="side-rail-header">
-            <div className="role-chip">{auth.userRole.replace("ROLE_", "")}</div>
-            <div className="user-meta">
-              <div className="user-name">{auth.fullName}</div>
-              <div className="user-phone">{auth.phone}</div>
-            </div>
-          </div>
-          <nav className="nav-stack">
+        {!(auth.userRole === "ROLE_PSYCHOLOGIST" && auth.verified === false) && (
+          <nav className="topbar-nav">
             {nav.map((item) => (
               <NavLink
                 key={item.to}
@@ -240,8 +206,29 @@ export default function AppLayout() {
               </NavLink>
             ))}
           </nav>
-        </aside>
+        )}
 
+        <div className="topbar-actions">
+          {!(auth.userRole === "ROLE_PSYCHOLOGIST" && auth.verified === false) && (
+            <>
+              <Link to="/app/notifications" className="icon-button" aria-label="Уведомления">
+                <span className="icon-bell" aria-hidden="true" />
+                {unreadCount > 0 && <span className="badge-dot" />}
+              </Link>
+            </>
+          )}
+          <Link to="/app/profile" className="user-chip user-chip-link" aria-label="Профиль">
+            <span className="icon-user user-chip-icon" aria-hidden="true" />
+            <div>
+              <div className="user-chip-name">{auth.fullName}</div>
+              <div className="user-chip-sub">{auth.userRole.replace("ROLE_", "")}</div>
+            </div>
+          </Link>
+          <button className="button" onClick={logout}>Выйти</button>
+        </div>
+      </header>
+
+      <div className="app-body">
         <main className="app-content">
           <Outlet />
         </main>

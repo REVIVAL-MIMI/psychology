@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
@@ -6,12 +6,18 @@ import { formatPhone, normalizePhone } from "../lib/phone";
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { setAuth } = useAuth();
+  const { setAuth, isAuthenticated } = useAuth();
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [stage, setStage] = useState<"phone" | "otp">("phone");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/app", { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const sendOtp = async () => {
     setLoading(true);
@@ -49,8 +55,8 @@ export default function LoginPage() {
       <div className="auth-card">
         <div className="auth-header">
           <div className="pill">Вход</div>
-          <h2>Спокойный вход</h2>
-          <p className="muted">Введите номер и подтвердите одноразовым кодом.</p>
+          <h2>Добро пожаловать</h2>
+          <p className="muted">Введите номер телефона — дальше всё просто.</p>
         </div>
 
         <div className="form">
@@ -94,7 +100,7 @@ export default function LoginPage() {
       <div className="auth-aside">
         <div className="aside-card">
           <h3>Без лишнего</h3>
-          <p>OTP‑код вместо паролей — меньше шума, больше ясности.</p>
+          <p>Вход занимает меньше минуты и не требует лишних шагов.</p>
         </div>
         <div className="aside-card">
           <h3>Границы</h3>
