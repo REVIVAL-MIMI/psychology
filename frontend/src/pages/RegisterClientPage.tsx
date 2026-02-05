@@ -141,7 +141,10 @@ export default function RegisterClientPage() {
               onChange={(e) => setConsent(e.target.checked)}
             />
             <span>
-              Я принимаю условия пользовательского соглашения и даю согласие на обработку персональных данных.
+              Я принимаю условия
+              <a className="legal-link" href="/terms" target="_blank" rel="noreferrer"> пользовательского соглашения</a>
+              {" "}и даю согласие на
+              <a className="legal-link" href="/privacy" target="_blank" rel="noreferrer"> обработку персональных данных</a>.
             </span>
           </label>
 

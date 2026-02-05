@@ -5,6 +5,8 @@ import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPsychologistPage from "./pages/RegisterPsychologistPage";
 import RegisterClientPage from "./pages/RegisterClientPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import TermsPage from "./pages/TermsPage";
 import DashboardPage from "./pages/DashboardPage";
 import ClientsPage from "./pages/ClientsPage";
 import ClientDetailPage from "./pages/ClientDetailPage";
@@ -29,6 +31,8 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register/psychologist" element={<RegisterPsychologistPage />} />
           <Route path="/register" element={<RegisterClientPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
         </Route>
 
         <Route
