@@ -53,7 +53,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                         "http://localhost:5173",
                         "http://127.0.0.1:5173",
                         "http://188.225.45.82:3000",
-                        "http://188.225.45.82"
+                        "http://188.225.45.82",
+                        "https://188.225.45.82",
+                        "https://188.225.45.82:443"
                 )
                 .withSockJS();
 
@@ -64,7 +66,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                         "http://localhost:5173",
                         "http://127.0.0.1:5173",
                         "http://188.225.45.82:3000",
-                        "http://188.225.45.82"
+                        "http://188.225.45.82",
+                        "https://188.225.45.82",
+                        "https://188.225.45.82:443"
                 );
     }
 
