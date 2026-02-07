@@ -68,30 +68,30 @@ services:
       timeout: 5s
       retries: 5
 
-#  coturn:
-#    image: instrumentisto/coturn:4.6.2
-#    container_name: psychology-coturn
-#    restart: unless-stopped
-#    ports:
-#      - "3478:3478/tcp"
-#      - "3478:3478/udp"
-#      - "49160-49200:49160-49200/udp"
-#    environment:
-#      TURN_USER: ${TURN_USER:-turnuser}
-#      TURN_PASS: ${TURN_PASS:-turnpass}
-#      TURN_REALM: ${TURN_REALM:-188.225.45.82}
-#      TURN_EXTERNAL_IP: ${TURN_EXTERNAL_IP:-188.225.45.82}
-#    command:
-#      - -n
-#      - --log-file=stdout
-#      - --lt-cred-mech
-#      - --user=$(TURN_USER):$(TURN_PASS)
-#      - --realm=$(TURN_REALM)
-#      - --external-ip=$(TURN_EXTERNAL_IP)
-#      - --min-port=49160
-#      - --max-port=49200
-#      - --no-tls
-#      - --no-dtls
+  coturn:
+    image: instrumentisto/coturn:4.6.2
+    container_name: psychology-coturn
+    restart: unless-stopped
+    ports:
+      - "3478:3478/tcp"
+      - "3478:3478/udp"
+      - "49160-49200:49160-49200/udp"
+    environment:
+      TURN_USER: ${TURN_USER:-turnuser}
+      TURN_PASS: ${TURN_PASS:-turnpass}
+      TURN_REALM: ${TURN_REALM:-188.225.45.82}
+      TURN_EXTERNAL_IP: ${TURN_EXTERNAL_IP:-188.225.45.82}
+    command:
+      - -n
+      - --log-file=stdout
+      - --lt-cred-mech
+      - --user=$(TURN_USER):$(TURN_PASS)
+      - --realm=$(TURN_REALM)
+      - --external-ip=$(TURN_EXTERNAL_IP)
+      - --min-port=49160
+      - --max-port=49200
+      - --no-tls
+      - --no-dtls
 
 volumes:
   postgres_data:
