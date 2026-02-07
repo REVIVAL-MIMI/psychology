@@ -33,6 +33,7 @@ export default function ChatPage() {
   const ringGainRef = useRef<GainNode | null>(null);
   const ringbackTimerRef = useRef<number | null>(null);
   const videoSenderRef = useRef<RTCRtpSender | null>(null);
+  const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
 
   const userId = useMemo(() => auth?.userId ?? null, [auth]);
   const activeContact = useMemo(
@@ -78,6 +79,7 @@ export default function ChatPage() {
   const cleanupCall = () => {
     peerRef.current?.close();
     peerRef.current = null;
+    pendingIceRef.current = [];
     localStream?.getTracks().forEach((t) => t.stop());
     setLocalStream(null);
     setRemoteStream(null);
@@ -87,6 +89,21 @@ export default function ChatPage() {
     setCallExpanded(false);
     stopRingtone();
     stopRingback();
+  };
+
+  const flushPendingIce = async () => {
+    const pc = peerRef.current;
+    if (!pc || !pc.remoteDescription) return;
+    const pending = pendingIceRef.current;
+    if (!pending.length) return;
+    pendingIceRef.current = [];
+    for (const cand of pending) {
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(cand));
+      } catch {
+        // ignore
+      }
+    }
   };
 
   const getIceServers = () => {
@@ -192,6 +209,7 @@ export default function ChatPage() {
       const senderId = incomingOffer.senderId;
       const pc = await initPeer(senderId, videoEnabled);
       await pc.setRemoteDescription(new RTCSessionDescription({ type: "offer", sdp: incomingOffer.sdp }));
+      await flushPendingIce();
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       publishWs("/app/call.answer", { receiverId: senderId, sdp: answer.sdp, type: answer.type });
@@ -501,15 +519,21 @@ export default function ChatPage() {
       }
       if (payload.type === "answer" && peerRef.current) {
         await peerRef.current.setRemoteDescription(new RTCSessionDescription({ type: "answer", sdp: payload.sdp }));
+        await flushPendingIce();
         setCallState("in-call");
         stopRingback();
       }
       if (payload.type === "ice" && peerRef.current && payload.candidate) {
-        await peerRef.current.addIceCandidate(new RTCIceCandidate({
+        const ice: RTCIceCandidateInit = {
           candidate: payload.candidate,
           sdpMid: payload.sdpMid,
           sdpMLineIndex: payload.sdpMLineIndex
-        }));
+        };
+        if (!peerRef.current.remoteDescription) {
+          pendingIceRef.current.push(ice);
+        } else {
+          await peerRef.current.addIceCandidate(new RTCIceCandidate(ice));
+        }
       }
       if (payload.type === "hangup") {
         cleanupCall();
