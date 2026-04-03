@@ -34,7 +34,7 @@ public class ChatController {
         try {
             ChatDTO.MessageResponse response = chatService.sendMessage(sender, request);
 
-            // Отправляем уведомление через NotificationService
+
             notificationService.sendNewMessageNotification(response);
 
             return ResponseEntity.ok(response);
@@ -113,7 +113,6 @@ public class ChatController {
         }
     }
 
-    // УДАЛЯЕМ WebSocket методы, они теперь в WebSocketChatController
 
     @Data
     @AllArgsConstructor

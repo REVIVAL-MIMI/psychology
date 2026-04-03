@@ -21,18 +21,15 @@ public class FileStorageService {
     private String uploadDir;
 
     public String storeFile(MultipartFile file) throws IOException {
-        // Проверяем размер файла
         if (file.getSize() > 5 * 1024 * 1024) { // 5MB
             throw new RuntimeException("File size exceeds 5MB limit");
         }
 
-        // Проверяем тип файла
         String contentType = file.getContentType();
         if (!isAllowedFileType(contentType)) {
             throw new RuntimeException("File type not allowed. Allowed: PDF, DOC, DOCX");
         }
 
-        // Создаем директорию, если не существует
         Path uploadPath = Paths.get(uploadDir);
         if (!Files.exists(uploadPath)) {
             Files.createDirectories(uploadPath);
@@ -43,11 +40,9 @@ public class FileStorageService {
         String fileExtension = originalFileName.substring(originalFileName.lastIndexOf("."));
         String fileName = UUID.randomUUID().toString() + fileExtension;
 
-        // Сохраняем файл
         Path filePath = uploadPath.resolve(fileName);
         Files.copy(file.getInputStream(), filePath);
 
-        // Возвращаем относительный путь
         return "/uploads/" + fileName;
     }
 

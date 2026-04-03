@@ -7,7 +7,7 @@ export default function HomePage() {
         <div className="hero-content">
           <div className="pill">Психологическая практика</div>
           <h1>
-            Спокойная работа
+              Работа
             <br />
             с вниманием к человеку
           </h1>
@@ -66,16 +66,13 @@ export default function HomePage() {
           <div className="flow-card">
             <div className="flow-step">03</div>
             <h3>Совместная работа</h3>
-            <p>Сеансы, заметки и рекомендации — в одном спокойном ритме.</p>
+            <p>Сеансы, заметки и рекомендации — в одном ритме.</p>
           </div>
         </div>
       </section>
 
       <section className="home-values">
-        <div className="value-card">
-          <div className="value-title">Спокойствие</div>
-          <div className="value-text">Ровный тон и ясная структура.</div>
-        </div>
+
         <div className="value-card">
           <div className="value-title">Границы</div>
           <div className="value-text">Только то, что нужно для работы.</div>
@@ -89,7 +86,7 @@ export default function HomePage() {
       <section className="cta">
         <div>
           <h2>Начать работу</h2>
-          <p>Создайте профиль и выстройте спокойный рабочий процесс.</p>
+          <p>Создайте профиль и выстройте рабочий процесс.</p>
         </div>
         <Link to="/register/psychologist" className="button">
           Создать профиль
