@@ -2,18 +2,23 @@ import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { companyProfile } from "../lib/branding";
 import { formatPhone, normalizePhone } from "../lib/phone";
 
 const initialForm = {
   phone: "",
   otp: "",
   fullName: "",
-  age: ""
+  workEmail: "",
+  department: "",
+  position: "",
+  employeeCode: ""
 };
 
 type InviteValidation = {
   valid: boolean;
   psychologistName: string;
+  organizationName?: string;
   expiresAt: string;
 };
 
@@ -37,7 +42,7 @@ export default function RegisterClientPage() {
     api
       .get<InviteValidation>(`/invites/validate/${inviteToken}`, { skipAuth: true })
       .then(setInvite)
-      .catch(() => setError("Инвайт недействителен или просрочен."));
+      .catch(() => setError("Приглашение недействительно или уже истекло."));
   }, [inviteToken]);
 
   const sendOtp = async () => {
@@ -60,7 +65,12 @@ export default function RegisterClientPage() {
         phone: normalizePhone(form.phone),
         otp: form.otp,
         fullName: form.fullName,
-        age: Number(form.age)
+        age: null,
+        companyName: invite?.organizationName ?? companyProfile.companyName,
+        workEmail: form.workEmail || null,
+        department: form.department || null,
+        position: form.position || null,
+        employeeCode: form.employeeCode || null
       };
       const data = await api.post(
         `/auth/client/register?inviteToken=${encodeURIComponent(inviteToken)}`,
@@ -81,9 +91,9 @@ export default function RegisterClientPage() {
       <div className="auth-page">
         <div className="auth-card">
           <div className="auth-header">
-            <div className="pill">Клиент</div>
-            <h2>Нужен инвайт</h2>
-            <p className="muted">Регистрация доступна только по приглашению специалиста.</p>
+            <div className="pill">Сотрудник</div>
+            <h2>Нужно приглашение</h2>
+            <p className="muted">Доступ открывается только после приглашения от психолога.</p>
           </div>
         </div>
       </div>
@@ -94,15 +104,18 @@ export default function RegisterClientPage() {
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-header">
-          <div className="pill">Клиент</div>
-          <h2>Регистрация по приглашению</h2>
-          <p className="muted">Подтвердите номер, заполните базовый профиль и начните практику.</p>
+          <div className="pill">Сотрудник</div>
+          <h2>Активация доступа</h2>
+          <p className="muted">
+            Подтвердите номер и заполните профиль участника программы поддержки сотрудников.
+          </p>
         </div>
 
         {invite && (
           <div className="info-banner">
-            <div>Психолог: <strong>{invite.psychologistName}</strong></div>
-            <div>Инвайт действителен до: {new Date(invite.expiresAt).toLocaleString()}</div>
+            <div>Организация: <strong>{invite.organizationName ?? companyProfile.companyName}</strong></div>
+            <div>Назначенный психолог: <strong>{invite.psychologistName}</strong></div>
+            <div>Приглашение действительно до: {new Date(invite.expiresAt).toLocaleString()}</div>
           </div>
         )}
 
@@ -131,8 +144,20 @@ export default function RegisterClientPage() {
             <input value={form.fullName} onChange={update("fullName")} />
           </label>
           <label>
-            Возраст
-            <input type="number" value={form.age} onChange={update("age")} />
+            Рабочий email
+            <input type="email" value={form.workEmail} onChange={update("workEmail")} placeholder="name@telecombg.ru" />
+          </label>
+          <label>
+            Подразделение
+            <input value={form.department} onChange={update("department")} placeholder="Техническая поддержка" />
+          </label>
+          <label>
+            Должность
+            <input value={form.position} onChange={update("position")} placeholder="Инженер, менеджер, аналитик" />
+          </label>
+          <label>
+            Табельный номер
+            <input value={form.employeeCode} onChange={update("employeeCode")} placeholder="Опционально" />
           </label>
           <label className="checkbox-row">
             <input
@@ -153,9 +178,9 @@ export default function RegisterClientPage() {
           <button
             className="button"
             onClick={register}
-            disabled={loading || !form.otp || !form.fullName || !form.age || !consent}
+            disabled={loading || !form.otp || !form.fullName || !consent}
           >
-            {loading ? "Создаем…" : "Создать аккаунт"}
+            {loading ? "Активируем…" : "Активировать доступ"}
           </button>
         </div>
       </div>
@@ -163,11 +188,11 @@ export default function RegisterClientPage() {
       <div className="auth-aside">
         <div className="aside-card">
           <h3>Только по приглашению</h3>
-          <p>Доступ открывается вашим специалистом. Это часть системы границ.</p>
+          <p>Доступ в систему открывается по персональному приглашению.</p>
         </div>
         <div className="aside-card">
           <h3>Ваши данные</h3>
-          <p>История сеансов, дневник и рекомендации доступны сразу после входа.</p>
+          <p>История консультаций, журнал и рекомендации доступны только вам и назначенному психологу.</p>
         </div>
       </div>
     </div>

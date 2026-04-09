@@ -1,4 +1,4 @@
-import { clearStoredAuth, getStoredAuth, setStoredAuth } from "./storage";
+import { clearStoredAuth, getStoredAuth, isAccessTokenExpired } from "./storage";
 
 const API_PREFIX = "/api/v1";
 
@@ -27,6 +27,11 @@ async function request<T>(path: string, options: RequestOptions = {}, retry = tr
     ...(options.headers ?? {})
   };
 
+  if (!options.skipAuth && auth?.accessToken && isAccessTokenExpired(auth.accessToken)) {
+    handleUnauthorizedSession();
+    throw new ApiError("Session expired", 401);
+  }
+
   if (!options.skipAuth && auth?.accessToken) {
     headers.Authorization = `Bearer ${auth.accessToken}`;
   }
@@ -40,11 +45,9 @@ async function request<T>(path: string, options: RequestOptions = {}, retry = tr
     }
   );
 
-  if (response.status === 401 && retry) {
-    const refreshed = await tryRefresh();
-    if (refreshed) {
-      return request<T>(path, options, false);
-    }
+  if (!options.skipAuth && response.status === 401 && retry) {
+    handleUnauthorizedSession();
+    throw new ApiError("Session expired", 401);
   }
 
   if (!response.ok) {
@@ -64,25 +67,10 @@ async function request<T>(path: string, options: RequestOptions = {}, retry = tr
   return (await response.text()) as unknown as T;
 }
 
-async function tryRefresh(): Promise<boolean> {
-  try {
-    const response = await fetch(`${API_PREFIX}/auth/refresh`, {
-      method: "POST",
-      credentials: "include"
-    });
-    if (!response.ok) return false;
-    const data = (await response.json()) as {
-      accessToken: string;
-      userId: number;
-      userRole: "ROLE_CLIENT" | "ROLE_PSYCHOLOGIST" | "ROLE_ADMIN";
-      fullName: string;
-      phone: string;
-    };
-    setStoredAuth(data);
-    return true;
-  } catch {
-    clearStoredAuth();
-    return false;
+function handleUnauthorizedSession() {
+  clearStoredAuth();
+  if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+    window.location.replace("/login");
   }
 }
 

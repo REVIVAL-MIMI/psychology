@@ -1,0 +1,71 @@
+services:
+  backend:
+    image: ${BACKEND_IMAGE}
+    container_name: tbg-care-backend
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/psychology_db
+      SPRING_DATASOURCE_USERNAME: psychology_user
+      SPRING_DATASOURCE_PASSWORD: psychology_pass
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      APP_SEED_ENABLED: "true"
+      APP_ORGANIZATION_NAME: ООО «Телеком без границ»
+      APP_PSYCHOLOGISTS_REQUIRE_VERIFICATION: "false"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - uploads_data:/app/uploads
+
+  frontend:
+    image: ${FRONTEND_IMAGE}
+    container_name: tbg-care-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: tbg-care-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: psychology_db
+      POSTGRES_USER: psychology_user
+      POSTGRES_PASSWORD: psychology_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U psychology_user -d psychology_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: tbg-care-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads_data:

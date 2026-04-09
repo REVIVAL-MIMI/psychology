@@ -6,6 +6,7 @@ import com.psychology.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -17,6 +18,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class DashboardService {
 
     private final SessionRepository sessionRepository;
@@ -25,6 +27,12 @@ public class DashboardService {
     private final RecommendationRepository recommendationRepository;
     private final JournalEntryRepository journalEntryRepository;
     private final NotificationService notificationService;
+    private static final List<Session.SessionStatus> UPCOMING_STATUSES = List.of(
+            Session.SessionStatus.SCHEDULED,
+            Session.SessionStatus.CONFIRMED,
+            Session.SessionStatus.IN_PROGRESS,
+            Session.SessionStatus.RESCHEDULED
+    );
 
     public PsychologistDashboard getPsychologistDashboard(Psychologist psychologist) {
         PsychologistDashboard dashboard = new PsychologistDashboard();
@@ -35,53 +43,55 @@ public class DashboardService {
         List<Client> allClients = clientRepository.findByPsychologistId(psychologistId);
         dashboard.setTotalClients(allClients.size());
 
-        // Активные клиенты (с сеансами в ближайшие 30 дней)
+        // Активные клиенты (с сеансами в ближайшие 30 дней) — один агрегирующий запрос
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime thirtyDaysFromNow = now.plusDays(30);
-
-        long activeClients = allClients.stream()
-                .filter(client -> {
-                    List<Session> futureSessions = sessionRepository.findByClientIdAndScheduledAtBetween(
-                            client.getId(), now, thirtyDaysFromNow);
-                    return futureSessions.stream().anyMatch(this::isUpcomingStatus);
-                })
-                .count();
+        long activeClients = sessionRepository.countDistinctClientIdsByPsychologistIdAndScheduledAtBetweenAndStatusIn(
+                psychologistId,
+                now,
+                thirtyDaysFromNow,
+                UPCOMING_STATUSES
+        );
         dashboard.setActiveClients(activeClients);
 
         // Сеансы на сегодня
         LocalDateTime startOfToday = LocalDate.now().atStartOfDay();
         LocalDateTime endOfToday = startOfToday.plusDays(1);
-
-        long sessionsToday = sessionRepository.findByPsychologistIdAndScheduledAtBetween(
-                psychologistId, startOfToday, endOfToday).size();
+        long sessionsToday = sessionRepository.countByPsychologistIdAndScheduledAtBetweenAndStatusIn(
+                psychologistId,
+                startOfToday,
+                endOfToday,
+                UPCOMING_STATUSES
+        );
         dashboard.setUpcomingSessionsToday(sessionsToday);
 
         // Сеансы на эту неделю
         LocalDateTime startOfWeek = LocalDate.now().atStartOfDay();
         LocalDateTime endOfWeek = startOfWeek.plusDays(7);
-
-        long sessionsThisWeek = sessionRepository.findByPsychologistIdAndScheduledAtBetween(
-                psychologistId, startOfWeek, endOfWeek).size();
+        long sessionsThisWeek = sessionRepository.countByPsychologistIdAndScheduledAtBetweenAndStatusIn(
+                psychologistId,
+                startOfWeek,
+                endOfWeek,
+                UPCOMING_STATUSES
+        );
         dashboard.setUpcomingSessionsThisWeek(sessionsThisWeek);
 
-        // Невыполненные рекомендации
-        long pendingRecommendations = allClients.stream()
-                .mapToLong(client -> recommendationRepository.countByClientIdAndCompleted(client.getId(), false))
-                .sum();
+        // Невыполненные рекомендации — одним запросом
+        long pendingRecommendations = recommendationRepository.countPendingByPsychologistId(psychologistId);
         dashboard.setPendingRecommendations(pendingRecommendations);
 
-        // Непрочитанные сообщения
-        long unreadMessages = allClients.stream()
-                .mapToLong(client -> messageRepository.countByReceiverIdAndReadFalse(client.getId()))
-                .sum();
+        // Непрочитанные сообщения у сотрудников этого психолога — одним запросом
+        long unreadMessages = messageRepository.countUnreadForPsychologistClients(psychologistId);
         dashboard.setUnreadMessages(unreadMessages);
 
-        // Ближайшие 5 сеансов
-        List<Session> nextSessions = sessionRepository.findByPsychologistIdOrderByScheduledAtDesc(psychologistId)
+        // Ближайшие 5 сеансов с предзагрузкой связей client/psychologist
+        List<Session> nextSessions = sessionRepository.findByPsychologistIdAndScheduledAtBetweenAndStatusInWithParticipants(
+                        psychologistId,
+                        now,
+                        now.plusDays(90),
+                        UPCOMING_STATUSES
+                )
                 .stream()
-                .filter(session -> session.getScheduledAt().isAfter(now))
-                .filter(this::isUpcomingStatus)
-                .sorted(Comparator.comparing(Session::getScheduledAt))
                 .limit(5)
                 .collect(Collectors.toList());
         dashboard.setNextSessions(nextSessions);
@@ -102,16 +112,18 @@ public class DashboardService {
         psychologistInfo.setFullName(psychologist.getFullName());
         psychologistInfo.setSpecialization(psychologist.getSpecialization());
         psychologistInfo.setEmail(psychologist.getEmail());
+        psychologistInfo.setOrganizationName(psychologist.getOrganizationName());
+        psychologistInfo.setServiceFormat(psychologist.getServiceFormat());
         dashboard.setPsychologist(psychologistInfo);
 
         // Следующий сеанс
         LocalDateTime now = LocalDateTime.now();
-        List<Session> upcomingSessions = sessionRepository.findByClientIdOrderByScheduledAtDesc(client.getId())
-                .stream()
-                .filter(session -> session.getScheduledAt().isAfter(now))
-                .filter(this::isUpcomingStatus)
-                .sorted(Comparator.comparing(Session::getScheduledAt))
-                .collect(Collectors.toList());
+        List<Session> upcomingSessions = sessionRepository.findByClientIdAndScheduledAtBetweenAndStatusInWithParticipants(
+                client.getId(),
+                now,
+                now.plusDays(90),
+                UPCOMING_STATUSES
+        );
 
         if (!upcomingSessions.isEmpty()) {
             dashboard.setNextSession(upcomingSessions.get(0));
@@ -143,17 +155,11 @@ public class DashboardService {
         return dashboard;
     }
 
-    private boolean isUpcomingStatus(Session session) {
-        return session.getStatus() != Session.SessionStatus.CANCELLED
-                && session.getStatus() != Session.SessionStatus.COMPLETED;
-    }
-
     public PsychologistStats getPsychologistStats(Psychologist psychologist, LocalDateTime start, LocalDateTime end) {
         PsychologistStats stats = new PsychologistStats();
         Long psychologistId = psychologist.getId();
 
         List<Client> clients = clientRepository.findByPsychologistId(psychologistId);
-        List<Long> clientIds = clients.stream().map(Client::getId).collect(Collectors.toList());
 
         // Все сеансы за период
         List<Session> allSessionsInPeriod = sessionRepository.findByPsychologistIdAndScheduledAtBetween(
@@ -215,23 +221,24 @@ public class DashboardService {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime endDate = now.plusDays(daysAhead);
 
-        return sessionRepository.findByPsychologistIdAndScheduledAtBetween(
-                psychologist.getId(), now, endDate);
+        return sessionRepository.findByPsychologistIdAndScheduledAtBetweenAndStatusInWithParticipants(
+                psychologist.getId(),
+                now,
+                endDate,
+                UPCOMING_STATUSES
+        );
     }
 
     public List<Client> getActiveClients(Psychologist psychologist) {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime thirtyDaysFromNow = now.plusDays(30);
 
-        List<Client> allClients = clientRepository.findByPsychologistId(psychologist.getId());
-
-        return allClients.stream()
-                .filter(client -> {
-                    List<Session> futureSessions = sessionRepository.findByClientIdAndScheduledAtBetween(
-                            client.getId(), now, thirtyDaysFromNow);
-                    return !futureSessions.isEmpty();
-                })
-                .collect(Collectors.toList());
+        return clientRepository.findActiveByPsychologistIdAndDateRange(
+                psychologist.getId(),
+                now,
+                thirtyDaysFromNow,
+                UPCOMING_STATUSES
+        );
     }
 
     private MonthlyStats getMonthlyStats(Long psychologistId) {

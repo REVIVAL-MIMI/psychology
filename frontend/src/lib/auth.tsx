@@ -1,6 +1,6 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { api } from "./api";
-import { AuthState, clearStoredAuth, getStoredAuth, setStoredAuth } from "./storage";
+import { AUTH_CHANGED_EVENT, AuthState, clearStoredAuth, getStoredAuth, isAccessTokenExpired, setStoredAuth } from "./storage";
 
 export type AuthContextValue = {
   auth: AuthState | null;
@@ -32,6 +32,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAuth(null);
     }
   }, [setAuth]);
+
+  useEffect(() => {
+    const syncAuth = () => {
+      setAuthState(getStoredAuth());
+    };
+
+    const checkSession = () => {
+      setAuthState((current) => {
+        if (!current) return null;
+        return isAccessTokenExpired(current.accessToken) ? null : current;
+      });
+      if (isAccessTokenExpired(getStoredAuth()?.accessToken)) {
+        clearStoredAuth();
+      }
+    };
+
+    window.addEventListener(AUTH_CHANGED_EVENT, syncAuth);
+    const timer = window.setInterval(checkSession, 15000);
+
+    return () => {
+      window.removeEventListener(AUTH_CHANGED_EVENT, syncAuth);
+      window.clearInterval(timer);
+    };
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({ auth, isAuthenticated: Boolean(auth?.accessToken), setAuth, logout }),

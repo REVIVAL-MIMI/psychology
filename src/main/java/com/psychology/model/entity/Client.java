@@ -20,6 +20,19 @@ public class Client extends User {
 
     private Integer age;
 
+    @Column(name = "company_name")
+    private String companyName;
+
+    @Column(name = "work_email")
+    private String workEmail;
+
+    private String department;
+
+    private String position;
+
+    @Column(name = "employee_code")
+    private String employeeCode;
+
     private String photoUrl;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -37,7 +50,8 @@ public class Client extends User {
                 "id=" + getId() +
                 ", phone='" + getPhone() + '\'' +
                 ", fullName='" + fullName + '\'' +
-                ", age=" + age +
+                ", companyName='" + companyName + '\'' +
+                ", department='" + department + '\'' +
                 '}';
     }
 }

@@ -1,0 +1,32 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-corporate-profile-fields
+      author: codex
+      changes:
+        - addColumn:
+            tableName: psychologists
+            columns:
+              - column:
+                  name: organization_name
+                  type: VARCHAR(255)
+              - column:
+                  name: service_format
+                  type: VARCHAR(255)
+        - addColumn:
+            tableName: clients
+            columns:
+              - column:
+                  name: company_name
+                  type: VARCHAR(255)
+              - column:
+                  name: work_email
+                  type: VARCHAR(255)
+              - column:
+                  name: department
+                  type: VARCHAR(255)
+              - column:
+                  name: position
+                  type: VARCHAR(255)
+              - column:
+                  name: employee_code
+                  type: VARCHAR(255)

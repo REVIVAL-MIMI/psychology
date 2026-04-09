@@ -31,6 +31,9 @@ public interface RecommendationRepository extends JpaRepository<Recommendation, 
 
     long countByClientIdAndCompleted(Long clientId, boolean completed);
 
+    @Query("SELECT COUNT(r) FROM Recommendation r WHERE r.client.psychologist.id = :psychologistId AND r.completed = false")
+    long countPendingByPsychologistId(@Param("psychologistId") Long psychologistId);
+
     @Modifying
     @Transactional
     void deleteByClientId(Long clientId);

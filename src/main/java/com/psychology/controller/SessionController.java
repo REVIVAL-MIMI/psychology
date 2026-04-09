@@ -25,9 +25,10 @@ public class SessionController {
     // Психолог создает сеанс
     @PostMapping
     public ResponseEntity<?> createSession(
-            @AuthenticationPrincipal Psychologist psychologist,
+            @AuthenticationPrincipal Object principal,
             @RequestBody SessionService.SessionRequest request) {
         try {
+            Psychologist psychologist = extractPsychologist(principal);
             Session session = sessionService.createSession(psychologist, request);
             return ResponseEntity.status(HttpStatus.CREATED).body(session);
         } catch (RuntimeException e) {
@@ -39,10 +40,11 @@ public class SessionController {
     // Психолог обновляет сеанс
     @PutMapping("/{sessionId}")
     public ResponseEntity<?> updateSession(
-            @AuthenticationPrincipal Psychologist psychologist,
+            @AuthenticationPrincipal Object principal,
             @PathVariable Long sessionId,
             @RequestBody SessionService.SessionUpdateRequest request) {
         try {
+            Psychologist psychologist = extractPsychologist(principal);
             Session session = sessionService.updateSession(sessionId, psychologist, request);
             return ResponseEntity.ok(session);
         } catch (RuntimeException e) {
@@ -54,9 +56,10 @@ public class SessionController {
     // Получить сеансы психолога
     @GetMapping("/psychologist")
     public ResponseEntity<List<Session>> getPsychologistSessions(
-            @AuthenticationPrincipal Psychologist psychologist,
+            @AuthenticationPrincipal Object principal,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
+        Psychologist psychologist = extractPsychologist(principal);
         List<Session> sessions = sessionService.getPsychologistSessions(psychologist, from, to);
         return ResponseEntity.ok(sessions);
     }
@@ -64,11 +67,74 @@ public class SessionController {
     // Получить сеансы клиента
     @GetMapping("/client")
     public ResponseEntity<List<Session>> getClientSessions(
-            @AuthenticationPrincipal Client client,
+            @AuthenticationPrincipal Object principal,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
+        Client client = extractClient(principal);
         List<Session> sessions = sessionService.getClientSessions(client, from, to);
         return ResponseEntity.ok(sessions);
+    }
+
+    // Свободные слоты для самозаписи сотрудника
+    @GetMapping("/available-slots")
+    public ResponseEntity<?> getAvailableSlotsForClient(
+            @AuthenticationPrincipal Object principal,
+            @RequestParam(required = false) Integer daysAhead) {
+        try {
+            Client client = extractClient(principal);
+            List<SessionService.AvailableDaySlots> slots = sessionService.getAvailableSlotsForClient(client, daysAhead);
+            return ResponseEntity.ok(slots);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse(e.getMessage()));
+        }
+    }
+
+    // Самозапись сотрудника на слот
+    @PostMapping("/book")
+    public ResponseEntity<?> bookByClient(
+            @AuthenticationPrincipal Object principal,
+            @RequestBody SessionService.ClientBookingRequest request) {
+        try {
+            Client client = extractClient(principal);
+            Session session = sessionService.bookSessionByClient(client, request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(session);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse(e.getMessage()));
+        }
+    }
+
+    // Мой график психолога на 2 недели (или иной диапазон)
+    @GetMapping("/my-schedule")
+    public ResponseEntity<?> getMySchedule(
+            @AuthenticationPrincipal Object principal,
+            @RequestParam(required = false) Integer daysAhead) {
+        try {
+            Psychologist psychologist = extractPsychologist(principal);
+            List<SessionService.PsychologistScheduleDay> schedule = sessionService.getPsychologistSchedule(psychologist, daysAhead);
+            return ResponseEntity.ok(schedule);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse(e.getMessage()));
+        }
+    }
+
+    // Обновление рабочих/нерабочих дней и часов психолога
+    @PutMapping("/availability")
+    public ResponseEntity<?> updateAvailability(
+            @AuthenticationPrincipal Object principal,
+            @RequestBody SessionService.UpdateAvailabilityRequest request,
+            @RequestParam(required = false) Integer daysAhead) {
+        try {
+            Psychologist psychologist = extractPsychologist(principal);
+            List<SessionService.PsychologistScheduleDay> schedule =
+                    sessionService.updatePsychologistAvailability(psychologist, request, daysAhead);
+            return ResponseEntity.ok(schedule);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse(e.getMessage()));
+        }
     }
 
     // Отменить сеанс
@@ -93,6 +159,20 @@ public class SessionController {
             return "CLIENT";
         }
         throw new RuntimeException("Unknown user type");
+    }
+
+    private Psychologist extractPsychologist(Object principal) {
+        if (principal instanceof Psychologist psychologist) {
+            return psychologist;
+        }
+        throw new RuntimeException("Psychologist access required");
+    }
+
+    private Client extractClient(Object principal) {
+        if (principal instanceof Client client) {
+            return client;
+        }
+        throw new RuntimeException("Client access required");
     }
 
     @Data

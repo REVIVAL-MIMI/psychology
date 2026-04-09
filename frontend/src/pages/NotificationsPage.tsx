@@ -31,7 +31,8 @@ export default function NotificationsPage() {
     <div className="page">
       <div className="page-header">
         <h1>Уведомления</h1>
-        <button className="button ghost" onClick={markAll}>Отметить все</button>
+        <p className="muted">Напоминания о консультациях, сообщениях и шагах программы поддержки.</p>
+        <button className="button ghost" onClick={markAll}>Отметить все прочитанными</button>
       </div>
 
       <div className="card">

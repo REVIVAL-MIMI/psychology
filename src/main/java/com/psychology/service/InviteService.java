@@ -9,12 +9,14 @@ import com.psychology.repository.PsychologistRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -23,6 +25,9 @@ import java.util.stream.Collectors;
 public class InviteService {
     private final InviteRepository inviteRepository;
     private final PsychologistRepository psychologistRepository;
+
+    @Value("${app.organization.name:ООО «Телеком без границ»}")
+    private String defaultOrganizationName;
 
     private static final int INVITE_TOKEN_LENGTH = 32;
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
@@ -42,6 +47,16 @@ public class InviteService {
                 managedPsychologist.getId(),
                 managedPsychologist.getFullName(),
                 managedPsychologist.isVerified());
+
+        Optional<Invite> existingInvite = inviteRepository
+                .findFirstByPsychologistIdAndUsedFalseAndExpiresAtAfterOrderByCreatedAtDesc(
+                        managedPsychologist.getId(),
+                        LocalDateTime.now()
+                );
+        if (existingInvite.isPresent()) {
+            log.info("Returning existing active invite for psychologist ID: {}", managedPsychologist.getId());
+            return existingInvite.get().getToken();
+        }
 
         String token;
         int attempts = 0;
@@ -75,7 +90,13 @@ public class InviteService {
     public List<InviteDTO> getInvitesByPsychologist(Long psychologistId) {
         log.info("Getting invites for psychologist ID: {}", psychologistId);
 
-        List<Invite> invites = inviteRepository.findByPsychologistIdAndUsedFalse(psychologistId);
+        List<Invite> invites = inviteRepository
+                .findFirstByPsychologistIdAndUsedFalseAndExpiresAtAfterOrderByCreatedAtDesc(
+                        psychologistId,
+                        LocalDateTime.now()
+                )
+                .map(List::of)
+                .orElseGet(List::of);
 
         return invites.stream()
                 .map(invite -> new InviteDTO(
@@ -102,10 +123,14 @@ public class InviteService {
 
         // Теперь psychologist должен быть загружен
         String psychologistName = invite.getPsychologist().getFullName();
+        String organizationName = invite.getPsychologist().getOrganizationName() != null
+                && !invite.getPsychologist().getOrganizationName().isBlank()
+                ? invite.getPsychologist().getOrganizationName()
+                : defaultOrganizationName;
         String expiresAt = invite.getExpiresAt().format(FORMATTER);
 
         log.info("Invite validation result: valid={}, psychologist={}", valid, psychologistName);
 
-        return new InviteValidationResponse(valid, psychologistName, expiresAt);
+        return new InviteValidationResponse(valid, psychologistName, organizationName, expiresAt);
     }
 }

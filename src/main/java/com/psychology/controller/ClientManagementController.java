@@ -35,6 +35,11 @@ public class ClientManagementController {
                     dto.setFullName(c.getFullName());
                     dto.setAge(c.getAge());
                     dto.setPhone(c.getPhone());
+                    dto.setCompanyName(c.getCompanyName());
+                    dto.setWorkEmail(c.getWorkEmail());
+                    dto.setDepartment(c.getDepartment());
+                    dto.setPosition(c.getPosition());
+                    dto.setEmployeeCode(c.getEmployeeCode());
                     // Не включаем psychologist или включаем только ID
                     return dto;
                 })

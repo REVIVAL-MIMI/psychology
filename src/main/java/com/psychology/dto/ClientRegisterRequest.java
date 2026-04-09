@@ -1,7 +1,7 @@
 package com.psychology.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Email;
 import lombok.Data;
 
 @Data
@@ -15,6 +15,11 @@ public class ClientRegisterRequest {
     @NotBlank
     private String fullName;
 
-    @NotNull
     private Integer age;
+    private String companyName;
+    @Email
+    private String workEmail;
+    private String department;
+    private String position;
+    private String employeeCode;
 }

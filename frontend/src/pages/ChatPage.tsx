@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { connectWs, publishWs, subscribeWs } from "../lib/ws";
@@ -10,6 +10,8 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState("");
   const [typing, setTyping] = useState(false);
+  const [loadingContacts, setLoadingContacts] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
   const [unreadBySender, setUnreadBySender] = useState<Record<number, number>>({});
   const [callState, setCallState] = useState<"idle" | "calling" | "incoming" | "in-call">("idle");
   const [incomingOffer, setIncomingOffer] = useState<any | null>(null);
@@ -34,11 +36,73 @@ export default function ChatPage() {
   const ringbackTimerRef = useRef<number | null>(null);
   const videoSenderRef = useRef<RTCRtpSender | null>(null);
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
+  const callStateRef = useRef(callState);
 
   const userId = useMemo(() => auth?.userId ?? null, [auth]);
   const activeContact = useMemo(
-    () => contacts.find((c) => c.id === activeId),
+    () => contacts.find((c) => activeId !== null && String(c.id) === String(activeId)),
     [contacts, activeId]
+  );
+  const hasLocalVideo = useMemo(
+    () => Boolean(localStream && localStream.getVideoTracks().length > 0),
+    [localStream]
+  );
+  const counterpartLabel = auth?.userRole === "ROLE_PSYCHOLOGIST" ? "сотрудника" : "психолога";
+
+  const applyContacts = useCallback((nextContacts: any[]) => {
+    setContacts(nextContacts);
+    setActiveId((prev) => {
+      if (!nextContacts.length) return null;
+      if (prev !== null && nextContacts.some((c) => String(c.id) === String(prev))) {
+        return prev;
+      }
+      return nextContacts[0].id;
+    });
+  }, []);
+
+  const loadContacts = useCallback(async () => {
+    if (!auth) return;
+    setLoadingContacts(true);
+    setChatError(null);
+
+    const fetchContacts = async () => {
+      if (auth.userRole === "ROLE_PSYCHOLOGIST") {
+        return (await api.get<any[]>("/clients")) ?? [];
+      }
+      if (auth.userRole === "ROLE_CLIENT") {
+        const data = await api.get<any>("/dashboard/client");
+        return data?.psychologist ? [data.psychologist] : [];
+      }
+      return [];
+    };
+
+    try {
+      const data = await fetchContacts();
+      applyContacts(data);
+    } catch {
+      try {
+        await new Promise((resolve) => window.setTimeout(resolve, 700));
+        const retryData = await fetchContacts();
+        applyContacts(retryData);
+      } catch {
+        setChatError("Не удалось загрузить диалоги.");
+      }
+    } finally {
+      setLoadingContacts(false);
+    }
+  }, [auth, applyContacts]);
+
+  const publishSignalWithRetry = useCallback(
+    async (destination: string, payload: unknown, attempts = 6, delayMs = 180) => {
+      for (let attempt = 0; attempt < attempts; attempt += 1) {
+        if (publishWs(destination, payload)) {
+          return true;
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, delayMs));
+      }
+      return false;
+    },
+    []
   );
 
   const markMessagesRead = async (items: any[]) => {
@@ -66,9 +130,15 @@ export default function ChatPage() {
   const attachStreams = () => {
     if (localVideoRef.current && localStream) {
       localVideoRef.current.srcObject = localStream;
+      localVideoRef.current.play().catch(() => null);
+    } else if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null;
     }
     if (remoteVideoRef.current && remoteStream) {
       remoteVideoRef.current.srcObject = remoteStream;
+      remoteVideoRef.current.play().catch(() => null);
+    } else if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
     }
   };
 
@@ -128,9 +198,7 @@ export default function ChatPage() {
       iceServers: getIceServers()
     });
     peerRef.current = pc;
-
-    const videoTransceiver = pc.addTransceiver("video", { direction: "sendrecv" });
-    videoSenderRef.current = videoTransceiver.sender;
+    videoSenderRef.current = null;
 
     const stream = new MediaStream();
     const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
@@ -146,32 +214,38 @@ export default function ChatPage() {
       const videoTrack = videoStream.getVideoTracks()[0];
       if (videoTrack) {
         stream.addTrack(videoTrack);
-        await videoTransceiver.sender.replaceTrack(videoTrack);
+        videoSenderRef.current = pc.addTrack(videoTrack, stream);
       }
-    } else {
-      await videoTransceiver.sender.replaceTrack(null);
     }
 
     setLocalStream(stream);
 
     pc.onicecandidate = (event) => {
       if (!event.candidate) return;
-      publishWs("/app/call.ice", {
+      void publishSignalWithRetry("/app/call.ice", {
         receiverId,
         candidate: event.candidate.candidate,
         sdpMid: event.candidate.sdpMid,
         sdpMLineIndex: event.candidate.sdpMLineIndex
-      });
+      }, 3, 120);
     };
 
     pc.ontrack = (event) => {
       const [remote] = event.streams;
       if (remote) {
         setRemoteStream(remote);
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = remote;
+          remoteVideoRef.current.play().catch(() => null);
+        }
       } else {
         setRemoteStream((prev) => {
           const stream = prev ?? new MediaStream();
           stream.addTrack(event.track);
+          if (remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = stream;
+            remoteVideoRef.current.play().catch(() => null);
+          }
           return stream;
         });
       }
@@ -189,14 +263,25 @@ export default function ChatPage() {
   const startCall = async (withVideo: boolean) => {
     if (!activeId || callState !== "idle") return;
     try {
+      setChatError(null);
       setCallState("calling");
       startRingback();
       setVideoEnabled(withVideo);
       const pc = await initPeer(activeId, withVideo);
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      publishWs("/app/call.offer", { receiverId: activeId, sdp: offer.sdp, type: offer.type });
+      const sent = await publishSignalWithRetry("/app/call.offer", {
+        receiverId: activeId,
+        videoEnabled: withVideo,
+        sdp: offer.sdp,
+        type: offer.type
+      });
+      if (!sent) {
+        setChatError("Не удалось начать звонок. Проверьте подключение и попробуйте еще раз.");
+        cleanupCall();
+      }
     } catch {
+      setChatError("Не удалось запустить звонок. Проверьте доступ к микрофону и камере.");
       cleanupCall();
     }
   };
@@ -204,31 +289,48 @@ export default function ChatPage() {
   const acceptCall = async () => {
     if (!incomingOffer) return;
     try {
+      setChatError(null);
       setCallState("in-call");
       stopRingtone();
       const senderId = incomingOffer.senderId;
-      const pc = await initPeer(senderId, videoEnabled);
+      const remoteRequestedVideo = incomingOffer.videoEnabled !== false;
+      setVideoEnabled(remoteRequestedVideo);
+      const pc = await initPeer(senderId, remoteRequestedVideo);
       await pc.setRemoteDescription(new RTCSessionDescription({ type: "offer", sdp: incomingOffer.sdp }));
       await flushPendingIce();
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
-      publishWs("/app/call.answer", { receiverId: senderId, sdp: answer.sdp, type: answer.type });
+      const sent = await publishSignalWithRetry("/app/call.answer", {
+        receiverId: senderId,
+        videoEnabled: remoteRequestedVideo,
+        sdp: answer.sdp,
+        type: answer.type
+      });
+      if (!sent) {
+        setChatError("Не удалось принять звонок. Попробуйте еще раз.");
+        cleanupCall();
+        return;
+      }
       setIncomingOffer(null);
     } catch {
+      setChatError("Не удалось подключиться к звонку.");
       cleanupCall();
     }
   };
 
   const declineCall = () => {
     if (!incomingOffer) return;
-    publishWs("/app/call.hangup", { receiverId: incomingOffer.senderId, reason: "declined" });
+    void publishSignalWithRetry("/app/call.hangup", {
+      receiverId: incomingOffer.senderId,
+      reason: "declined"
+    }, 4, 120);
     cleanupCall();
   };
 
   const endCall = () => {
     const targetId = incomingOffer?.senderId ?? activeId;
     if (targetId) {
-      publishWs("/app/call.hangup", { receiverId: targetId, reason: "hangup" });
+      void publishSignalWithRetry("/app/call.hangup", { receiverId: targetId, reason: "hangup" }, 4, 120);
     }
     cleanupCall();
   };
@@ -304,9 +406,12 @@ export default function ChatPage() {
       const screenTrack = display.getVideoTracks()[0];
       const sender = peerRef.current
         .getSenders()
-        .find((s) => s.track && s.track.kind === "video");
+        .find((s) => s.track && s.track.kind === "video")
+        ?? videoSenderRef.current
+        ?? null;
       if (sender && screenTrack) {
         await sender.replaceTrack(screenTrack);
+        videoSenderRef.current = sender;
         setScreenSharing(true);
         screenTrack.onended = () => {
           stopScreenShare();
@@ -325,7 +430,9 @@ export default function ChatPage() {
     const videoTrack = localStream.getVideoTracks()[0];
     const sender = peerRef.current
       .getSenders()
-      .find((s) => s.track && s.track.kind === "video");
+      .find((s) => s.track && s.track.kind === "video")
+      ?? videoSenderRef.current
+      ?? null;
     if (sender && videoTrack) {
       await sender.replaceTrack(videoTrack);
     }
@@ -349,17 +456,21 @@ export default function ChatPage() {
     try {
       const cam = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
       const camTrack = cam.getVideoTracks()[0];
-      const sender = videoSenderRef.current
-        ?? peerRef.current.getSenders().find((s) => s.track && s.track.kind === "video")
+      const sender = peerRef.current.getSenders().find((s) => s.track && s.track.kind === "video")
+        ?? videoSenderRef.current
         ?? null;
       if (sender && camTrack) {
         await sender.replaceTrack(camTrack);
+        videoSenderRef.current = sender;
       } else if (camTrack) {
-        peerRef.current.addTrack(camTrack, cam);
+        const baseStream = localStream ?? new MediaStream();
+        videoSenderRef.current = peerRef.current.addTrack(camTrack, baseStream);
       }
       setLocalStream((prev) => {
-        const next = prev ? new MediaStream(prev.getTracks()) : new MediaStream();
-        if (camTrack) next.addTrack(camTrack);
+        const next = new MediaStream((prev?.getTracks() ?? []).filter((t) => t.kind !== "video"));
+        if (camTrack) {
+          next.addTrack(camTrack);
+        }
         return next;
       });
       setVideoEnabled(true);
@@ -381,6 +492,7 @@ export default function ChatPage() {
       ?? null;
     if (sender) {
       await sender.replaceTrack(null);
+      videoSenderRef.current = sender;
     }
     setLocalStream((prev) => {
       if (!prev) return prev;
@@ -409,25 +521,48 @@ export default function ChatPage() {
   };
 
   useEffect(() => {
-    if (!auth) return;
-    connectWs(auth.accessToken);
-    if (auth.userRole === "ROLE_PSYCHOLOGIST") {
-      api.get<any[]>("/clients").then(setContacts);
-    } else if (auth.userRole === "ROLE_CLIENT") {
-      api.get<any>("/dashboard/client").then((data) => {
-        if (data?.psychologist) {
-          setContacts([data.psychologist]);
-          setActiveId(data.psychologist.id);
-        }
-      });
-    }
-  }, [auth]);
+    callStateRef.current = callState;
+  }, [callState]);
 
   useEffect(() => {
-    if (auth?.userRole === "ROLE_CLIENT" && contacts.length && !activeId) {
-      setActiveId(contacts[0].id);
+    if (!auth) return;
+    connectWs(auth.accessToken);
+    loadContacts();
+    const timer = window.setInterval(loadContacts, 30000);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [auth, loadContacts]);
+
+  useEffect(() => {
+    if (!contacts.length) {
+      setActiveId(null);
+      return;
     }
-  }, [auth?.userRole, contacts, activeId]);
+    setActiveId((prev) => {
+      if (prev !== null && contacts.some((c) => String(c.id) === String(prev))) {
+        return prev;
+      }
+      return contacts[0].id;
+    });
+  }, [contacts]);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      loadContacts();
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        loadContacts();
+      }
+    };
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [loadContacts]);
 
   useEffect(() => {
     if (!activeId) return;
@@ -438,8 +573,11 @@ export default function ChatPage() {
       setMessages(updated);
       markMessagesRead(updated);
       setUnreadBySender((prev) => ({ ...prev, [activeId]: 0 }));
+    }).catch(() => {
+      setMessages([]);
+      setChatError("Не удалось загрузить сообщения.");
     });
-  }, [activeId]);
+  }, [activeId, auth?.userId]);
 
   useEffect(() => {
     if (!userId) return;
@@ -509,8 +647,8 @@ export default function ChatPage() {
     unsubscribeCall = subscribeWs(`/user/${userId}/queue/call`, async (payload) => {
       if (!payload?.type) return;
       if (payload.type === "offer") {
-        if (callState !== "idle") {
-          publishWs("/app/call.hangup", { receiverId: payload.senderId, reason: "busy" });
+        if (callStateRef.current !== "idle") {
+          void publishSignalWithRetry("/app/call.hangup", { receiverId: payload.senderId, reason: "busy" }, 4, 120);
           return;
         }
         startRingtone();
@@ -532,7 +670,11 @@ export default function ChatPage() {
         if (!peerRef.current.remoteDescription) {
           pendingIceRef.current.push(ice);
         } else {
-          await peerRef.current.addIceCandidate(new RTCIceCandidate(ice));
+          try {
+            await peerRef.current.addIceCandidate(new RTCIceCandidate(ice));
+          } catch {
+            pendingIceRef.current.push(ice);
+          }
         }
       }
       if (payload.type === "hangup") {
@@ -545,7 +687,7 @@ export default function ChatPage() {
       unsubscribeTyping?.();
       unsubscribeCall?.();
     };
-  }, [userId, activeId, callState]);
+  }, [userId, activeId, auth?.userId]);
 
   useEffect(() => {
     if (!activeId) return;
@@ -606,15 +748,28 @@ export default function ChatPage() {
     <div className="page chat-page">
       <div className="page-header">
         <h1>Чат</h1>
+        <p className="muted">Личный диалог между вами и специалистом.</p>
       </div>
+      {chatError && (
+        <div className="row">
+          <div className="error">{chatError}</div>
+          <button className="button ghost" type="button" onClick={() => loadContacts()}>
+            Повторить
+          </button>
+        </div>
+      )}
+      {loadingContacts && <div className="muted">Загружаем диалоги...</div>}
 
       <div className="chat-layout">
         <aside className="chat-contacts">
+          {!loadingContacts && contacts.length === 0 && (
+            <div className="muted">Пока нет доступных диалогов.</div>
+          )}
           {contacts.map((c) => (
             <button
               key={c.id}
               className={
-                activeId === c.id
+                activeId !== null && String(activeId) === String(c.id)
                   ? "contact active"
                   : unreadBySender[c.id]
                     ? "contact unread"
@@ -624,20 +779,20 @@ export default function ChatPage() {
             >
               <div className="contact-inner">
                 <div className="contact-name">{c.fullName}</div>
-                <div className="muted">{c.specialization ?? c.phone}</div>
+                <div className="muted">{c.specialization ?? c.department ?? c.position ?? c.phone}</div>
               </div>
             </button>
           ))}
         </aside>
         <section className="chat-window">
-          {!activeId && <div className="muted">Выберите диалог слева</div>}
+          {!activeId && <div className="muted">Выберите {counterpartLabel} слева</div>}
           {activeId && (
             <>
               <div className="chat-header">
                 <div>
                   <div className="chat-title">{activeContact?.fullName ?? "Диалог"}</div>
                   <div className="muted">
-                    {callState === "in-call" ? "Звонок активен" : callState === "calling" ? "Идёт вызов…" : "Онлайн чат"}
+                    {callState === "in-call" ? "Консультация в эфире" : callState === "calling" ? "Идет вызов…" : "Онлайн-чат"}
                   </div>
                 </div>
                 <div className="chat-actions">
@@ -656,7 +811,7 @@ export default function ChatPage() {
               {(callState === "calling" || callState === "in-call") && (
                 <div ref={callPanelRef} className={`call-panel ${callExpanded ? "expanded" : ""}`}>
                   <video ref={remoteVideoRef} className="video-remote" autoPlay playsInline />
-                  <video ref={localVideoRef} className="video-local" autoPlay playsInline muted />
+                  {hasLocalVideo && <video ref={localVideoRef} className="video-local" autoPlay playsInline muted />}
                   <div className="call-controls">
                     <button className="icon-button" onClick={toggleAudio} aria-label="Микрофон">
                       <span className={audioEnabled ? "icon-mic" : "icon-mic-off"} aria-hidden="true" />
@@ -698,7 +853,7 @@ export default function ChatPage() {
                 {typing && <div className="typing-indicator">… собеседник печатает</div>}
               </div>
               <div className="chat-input">
-                <input value={text} onChange={(e) => handleTyping(e.target.value)} placeholder="Сообщение…" />
+                <input value={text} onChange={(e) => handleTyping(e.target.value)} placeholder={`Сообщение для ${counterpartLabel}…`} />
                 <button className="button" onClick={sendMessage}>Отправить</button>
               </div>
             </>

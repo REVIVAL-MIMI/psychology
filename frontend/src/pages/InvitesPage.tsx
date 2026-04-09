@@ -11,6 +11,8 @@ export default function InvitesPage() {
 
   useEffect(() => {
     loadInvites();
+    const timer = window.setInterval(loadInvites, 15000);
+    return () => window.clearInterval(timer);
   }, []);
 
   const createInvite = async () => {
@@ -19,31 +21,34 @@ export default function InvitesPage() {
       await api.post("/invites");
       loadInvites();
     } catch {
-      setError("Не удалось создать инвайт.");
+      setError("Не удалось создать приглашение.");
     }
   };
 
   return (
     <div className="page">
       <div className="page-header">
-        <h1>Инвайты</h1>
-        <p className="muted">Создавайте приглашения для новых клиентов.</p>
+        <h1>Приглашения</h1>
+        <p className="muted">У психолога доступна только одна активная ссылка. После регистрации сотрудника она исчезает автоматически.</p>
       </div>
 
       <div className="card">
-        <button className="button" onClick={createInvite}>Создать инвайт</button>
+        <button className="button" onClick={createInvite}>
+          {invites.length ? "Получить текущую ссылку" : "Создать приглашение"}
+        </button>
         {error && <div className="error">{error}</div>}
+        {!invites.length && <div className="muted">Сейчас нет активной ссылки приглашения.</div>}
         <ul className="list">
           {invites.map((invite) => {
             const link = `${window.location.origin}/register?invite=${invite.token}`;
             return (
               <li key={invite.token} className="list-row">
                 <div>
-                  <div className="card-title">{invite.token}</div>
-                  <div className="muted">До: {invite.expiresAt}</div>
-                  <div className="muted">{invite.used ? "Использован" : "Активен"}</div>
+                  <div className="card-title">Активная ссылка для одного сотрудника</div>
+                  <div className="muted">Действует до: {new Date(invite.expiresAt).toLocaleString()}</div>
+                  <div className="muted">После использования ссылка автоматически исчезнет из кабинета.</div>
                 </div>
-                <a className="button ghost" href={link} target="_blank" rel="noreferrer">Открыть</a>
+                <a className="button ghost" href={link} target="_blank" rel="noreferrer">Открыть форму</a>
               </li>
             );
           })}

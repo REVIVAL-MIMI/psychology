@@ -30,28 +30,29 @@ export default function AdminPage() {
   return (
     <div className="page">
       <div className="page-header">
-        <h1>Админ-панель</h1>
+        <h1>Координация программы</h1>
+        <p className="muted">Подключение специалистов и контроль операционной картины сервиса.</p>
       </div>
 
       {stats && (
         <div className="grid-3">
-          <div className="card"><div className="label">Всего психологов</div><div className="value">{stats.totalPsychologists}</div></div>
-          <div className="card"><div className="label">Ожидают</div><div className="value">{stats.pendingPsychologists}</div></div>
-          <div className="card"><div className="label">Клиенты</div><div className="value">{stats.totalClients}</div></div>
+          <div className="card"><div className="label">Психологи программы</div><div className="value">{stats.totalPsychologists}</div></div>
+          <div className="card"><div className="label">На проверке</div><div className="value">{stats.pendingPsychologists}</div></div>
+          <div className="card"><div className="label">Сотрудники</div><div className="value">{stats.totalClients}</div></div>
         </div>
       )}
 
       <div className="card">
-        <h3>На верификацию</h3>
+        <h3>Специалисты на подключении</h3>
         <ul className="list">
           {pending.map((p) => (
             <li key={p.id} className="list-row">
               <div>
                 <div className="card-title">{p.fullName}</div>
-                <div className="muted">{p.email}</div>
+                <div className="muted">{[p.organizationName, p.serviceFormat, p.email].filter(Boolean).join(" • ")}</div>
               </div>
               <div className="row">
-                <button className="button ghost" onClick={() => verify(p.id)}>Верифицировать</button>
+                <button className="button ghost" onClick={() => verify(p.id)}>Подтвердить</button>
                 <button className="button ghost" onClick={() => reject(p.id)}>Отклонить</button>
               </div>
             </li>
@@ -60,15 +61,15 @@ export default function AdminPage() {
       </div>
 
       <div className="card">
-        <h3>Все психологи</h3>
+        <h3>Все специалисты</h3>
         <ul className="list">
           {all.map((p) => (
             <li key={p.id} className="list-row">
               <div>
                 <div className="card-title">{p.fullName}</div>
-                <div className="muted">{p.email}</div>
+                <div className="muted">{[p.organizationName, p.serviceFormat, p.email].filter(Boolean).join(" • ")}</div>
               </div>
-              <div className="muted">{p.verified ? "Verified" : "Pending"}</div>
+              <div className="muted">{p.verified ? "Активен" : "На проверке"}</div>
             </li>
           ))}
         </ul>

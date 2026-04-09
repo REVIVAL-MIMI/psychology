@@ -1,0 +1,10 @@
+.git
+.idea
+.m2
+target
+frontend/node_modules
+frontend/dist
+uploads
+docker-compose.hub.yml
+.env.docker
+.DS_Store

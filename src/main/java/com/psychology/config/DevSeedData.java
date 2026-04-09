@@ -45,9 +45,11 @@ public class DevSeedData implements ApplicationRunner {
         psychologist.setRole(UserRole.ROLE_PSYCHOLOGIST);
         psychologist.setFullName("Алексей Романов");
         psychologist.setEmail("psy@example.com");
+        psychologist.setOrganizationName("ООО «Телеком без границ»");
+        psychologist.setServiceFormat("Индивидуальные дистанционные консультации");
         psychologist.setEducation("МГУ, клиническая психология");
-        psychologist.setSpecialization("Тревожность, стресс, отношения");
-        psychologist.setDescription("Тихая работа с фокусом на ритм, устойчивость и бережные изменения.");
+        psychologist.setSpecialization("Стресс, выгорание, адаптация сотрудников");
+        psychologist.setDescription("Поддержка сотрудников в вопросах эмоциональной устойчивости, рабочих перегрузок и восстановления.");
         psychologist.setVerified(true);
         psychologist.setVerifiedAt(now.minusDays(30));
         psychologist = psychologistRepository.save(psychologist);
@@ -56,7 +58,11 @@ public class DevSeedData implements ApplicationRunner {
         client.setPhone(clientPhone);
         client.setRole(UserRole.ROLE_CLIENT);
         client.setFullName("Мария Кузнецова");
-        client.setAge(28);
+        client.setCompanyName("ООО «Телеком без границ»");
+        client.setWorkEmail("m.kuznetsova@telecombg.ru");
+        client.setDepartment("Сервисная поддержка");
+        client.setPosition("Ведущий специалист");
+        client.setEmployeeCode("TBG-1042");
         client.setPsychologist(psychologist);
         client.setLinkedAt(now.minusDays(20));
         client = clientRepository.save(client);
@@ -66,7 +72,7 @@ public class DevSeedData implements ApplicationRunner {
         upcoming.setClient(client);
         upcoming.setScheduledAt(now.plusDays(2).withHour(10).withMinute(30));
         upcoming.setDurationMinutes(50);
-        upcoming.setDescription("Фокус на тревоге перед публичными выступлениями");
+        upcoming.setDescription("Фокус на рабочей тревожности и восстановлении после перегрузки");
         upcoming.setStatus(Session.SessionStatus.SCHEDULED);
 
         Session confirmed = new Session();
@@ -74,7 +80,7 @@ public class DevSeedData implements ApplicationRunner {
         confirmed.setClient(client);
         confirmed.setScheduledAt(now.plusDays(6).withHour(18).withMinute(0));
         confirmed.setDurationMinutes(50);
-        confirmed.setDescription("Укрепление границ и ритма недели");
+        confirmed.setDescription("Стабилизация рабочего ритма и профилактика выгорания");
         confirmed.setStatus(Session.SessionStatus.CONFIRMED);
 
         Session completed = new Session();
@@ -82,7 +88,7 @@ public class DevSeedData implements ApplicationRunner {
         completed.setClient(client);
         completed.setScheduledAt(now.minusDays(3).withHour(12).withMinute(0));
         completed.setDurationMinutes(50);
-        completed.setDescription("Работа с дневником тревоги");
+        completed.setDescription("Разбор рабочих триггеров и напряжения в коммуникации");
         completed.setStatus(Session.SessionStatus.COMPLETED);
 
         Session cancelled = new Session();
@@ -90,7 +96,7 @@ public class DevSeedData implements ApplicationRunner {
         cancelled.setClient(client);
         cancelled.setScheduledAt(now.minusDays(10).withHour(9).withMinute(0));
         cancelled.setDurationMinutes(50);
-        cancelled.setDescription("Отменён по просьбе клиента");
+        cancelled.setDescription("Перенесена по просьбе сотрудника");
         cancelled.setStatus(Session.SessionStatus.CANCELLED);
 
         sessionRepository.saveAll(List.of(upcoming, confirmed, completed, cancelled));
@@ -98,26 +104,26 @@ public class DevSeedData implements ApplicationRunner {
         Recommendation rec1 = new Recommendation();
         rec1.setPsychologist(psychologist);
         rec1.setClient(client);
-        rec1.setTitle("Ритуал утренней ясности");
-        rec1.setContent("10 минут дыхания 4‑6 и короткая запись: «что важно сегодня».");
+        rec1.setTitle("Рабочий ритуал спокойного старта");
+        rec1.setContent("Перед началом смены: 10 минут дыхания и короткая фиксация трех приоритетов дня.");
         rec1.setDeadline(now.plusDays(5));
         rec1.setPriority(4);
-        rec1.setCategories(List.of("дыхание", "ритуалы"));
+        rec1.setCategories(List.of("дыхание", "адаптация"));
 
         Recommendation rec2 = new Recommendation();
         rec2.setPsychologist(psychologist);
         rec2.setClient(client);
-        rec2.setTitle("Дневник спокойствия");
-        rec2.setContent("Вечером 3 наблюдения: факт, реакция, новая интерпретация.");
+        rec2.setTitle("Журнал нагрузки");
+        rec2.setContent("В конце дня отметить 3 рабочих события: факт, реакция и способ восстановления.");
         rec2.setDeadline(now.plusDays(10));
         rec2.setPriority(3);
-        rec2.setCategories(List.of("дневник", "рефлексия"));
+        rec2.setCategories(List.of("журнал", "рефлексия"));
 
         Recommendation rec3 = new Recommendation();
         rec3.setPsychologist(psychologist);
         rec3.setClient(client);
-        rec3.setTitle("Тренировка границ");
-        rec3.setContent("Отметить 2 ситуации в неделю, где удалось сказать «нет».");
+        rec3.setTitle("Коммуникационные границы");
+        rec3.setContent("Отметить две ситуации за неделю, где удалось обозначить рабочие границы без конфликта.");
         rec3.setDeadline(now.minusDays(2));
         rec3.setPriority(2);
         rec3.setCategories(List.of("границы"));
@@ -129,16 +135,16 @@ public class DevSeedData implements ApplicationRunner {
 
         JournalEntry entry1 = new JournalEntry();
         entry1.setClient(client);
-        entry1.setContent("Сегодня удалось спокойно проговорить ожидания, без спешки и напряжения.");
+        entry1.setContent("Удалось спокойно обсудить загрузку с руководителем и не уйти в перегрузку.");
         entry1.setMood("спокойно");
-        entry1.setTags(List.of("границы", "работа"));
+        entry1.setTags(List.of("работа", "границы"));
         entry1.setCreatedAt(now.minusDays(4));
 
         JournalEntry entry2 = new JournalEntry();
         entry2.setClient(client);
-        entry2.setContent("С утра тревога, помогло дыхание и короткая прогулка.");
+        entry2.setContent("С утра была тревога перед сложным клиентским звонком, помогла дыхательная пауза и короткая прогулка.");
         entry2.setMood("тревожно");
-        entry2.setTags(List.of("дыхание", "прогулка"));
+        entry2.setTags(List.of("дыхание", "стресс"));
         entry2.setCreatedAt(now.minusDays(2));
 
         journalEntryRepository.saveAll(List.of(entry1, entry2));
@@ -146,42 +152,42 @@ public class DevSeedData implements ApplicationRunner {
         Message m1 = new Message();
         m1.setSender(psychologist);
         m1.setReceiver(client);
-        m1.setContent("Мария, как ощущается неделя? Есть ли один момент, где было спокойнее?");
+        m1.setContent("Мария, как проходит неделя? Был ли сегодня момент, где удалось удержать рабочий ритм спокойнее?");
         m1.setRead(true);
         m1.setSentAt(now.minusDays(3).withHour(11).withMinute(15));
 
         Message m2 = new Message();
         m2.setSender(client);
         m2.setReceiver(psychologist);
-        m2.setContent("Да, утром в понедельник получилось начать без спешки.");
+        m2.setContent("Да, в понедельник утром удалось зайти в смену без спешки и суеты.");
         m2.setRead(true);
         m2.setSentAt(now.minusDays(3).withHour(11).withMinute(18));
 
         Message m3 = new Message();
         m3.setSender(psychologist);
         m3.setReceiver(client);
-        m3.setContent("Отлично. Давай закрепим это коротким ритуалом из 3 шагов.");
+        m3.setContent("Отлично. Давайте закрепим это коротким ритуалом переключения перед началом рабочего блока.");
         m3.setRead(true);
         m3.setSentAt(now.minusDays(3).withHour(11).withMinute(22));
 
         Message m4 = new Message();
         m4.setSender(client);
         m4.setReceiver(psychologist);
-        m4.setContent("Получилось. Записала в дневник.");
+        m4.setContent("Получилось, зафиксировала это в журнале.");
         m4.setRead(true);
         m4.setSentAt(now.minusDays(2).withHour(20).withMinute(5));
 
         Message m5 = new Message();
         m5.setSender(psychologist);
         m5.setReceiver(client);
-        m5.setContent("📹 Видеозвонок: 12 минут. Итоги — отправлю в рекомендациях.");
+        m5.setContent("Видеоконсультация заняла 12 минут. Итоги и следующий шаг отправлю в рекомендациях.");
         m5.setRead(true);
         m5.setSentAt(now.minusDays(1).withHour(18).withMinute(30));
 
         Message m6 = new Message();
         m6.setSender(psychologist);
         m6.setReceiver(client);
-        m6.setContent("Напомню: завтра сеанс в 10:30. Если нужно перенести — просто напишите.");
+        m6.setContent("Напомню: завтра консультация в 10:30. Если понадобится перенос, просто напишите.");
         m6.setRead(false);
         m6.setSentAt(now.minusHours(2));
 

@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import PublicLayout from "./layouts/PublicLayout";
 import AppLayout from "./layouts/AppLayout";
 import HomePage from "./pages/HomePage";
@@ -61,6 +61,22 @@ export default function App() {
             }
           />
           <Route path="sessions" element={<SessionsPage />} />
+          <Route
+            path="book"
+            element={
+              <ProtectedRoute roles={["ROLE_CLIENT"]}>
+                <Navigate to="/app/sessions" replace />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="my-schedule"
+            element={
+              <ProtectedRoute roles={["ROLE_PSYCHOLOGIST"]}>
+                <Navigate to="/app/sessions" replace />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="journal"
             element={

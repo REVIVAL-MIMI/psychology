@@ -19,6 +19,12 @@ public class Psychologist extends User {
     @Column(nullable = false)
     private String email;
 
+    @Column(name = "organization_name")
+    private String organizationName;
+
+    @Column(name = "service_format")
+    private String serviceFormat;
+
     private String education;
 
     private String specialization;
@@ -49,6 +55,7 @@ public class Psychologist extends User {
                 ", phone='" + getPhone() + '\'' +
                 ", fullName='" + fullName + '\'' +
                 ", email='" + email + '\'' +
+                ", organizationName='" + organizationName + '\'' +
                 ", verified=" + verified +
                 '}';
     }

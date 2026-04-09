@@ -10,6 +10,11 @@ public class ClientDTO {
     private String phone;
     private String fullName;
     private Integer age;
+    private String companyName;
+    private String workEmail;
+    private String department;
+    private String position;
+    private String employeeCode;
     private LocalDateTime linkedAt;
     private PsychologistInfoDTO psychologist; // Только ID и имя
 }

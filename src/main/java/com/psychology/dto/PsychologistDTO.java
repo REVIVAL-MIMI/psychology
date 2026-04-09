@@ -10,6 +10,8 @@ public class PsychologistDTO {
     private String phone;
     private String fullName;
     private String email;
+    private String organizationName;
+    private String serviceFormat;
     private String education;
     private String specialization;
     private String description;

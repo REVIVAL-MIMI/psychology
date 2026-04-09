@@ -23,7 +23,7 @@ export default function ClientsPage() {
   return (
     <div className="page">
       <div className="page-header">
-        <h1>Клиенты</h1>
+        <h1>Сотрудники</h1>
         <div className="row">
           <input
             className="search"
@@ -41,7 +41,10 @@ export default function ClientsPage() {
         {clients.map((client) => (
           <div className="card" key={client.id}>
             <div className="card-title">{client.fullName}</div>
-            <div className="muted">Возраст: {client.age ?? "—"}</div>
+            <div className="muted">
+              {[client.department, client.position].filter(Boolean).join(" • ") || "Профиль сотрудника"}
+            </div>
+            {client.workEmail && <div className="muted">Рабочий email: {client.workEmail}</div>}
             <div className="muted">Телефон: {client.phone ?? "—"}</div>
             <div className="card-actions">
               <Link to={`/app/clients/${client.id}`} className="button ghost">Открыть</Link>

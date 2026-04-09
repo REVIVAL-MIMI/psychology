@@ -151,11 +151,13 @@ public class InviteController {
     public static class InviteValidationResponse {
         private boolean valid;
         private String psychologistName;
+        private String organizationName;
         private String expiresAt;
 
-        public InviteValidationResponse(boolean valid, String psychologistName, String expiresAt) {
+        public InviteValidationResponse(boolean valid, String psychologistName, String organizationName, String expiresAt) {
             this.valid = valid;
             this.psychologistName = psychologistName;
+            this.organizationName = organizationName;
             this.expiresAt = expiresAt;
         }
     }

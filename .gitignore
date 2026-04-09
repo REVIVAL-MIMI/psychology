@@ -31,3 +31,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Docker release artifacts ###
+docker-release/
+releases/
+.env.docker.local

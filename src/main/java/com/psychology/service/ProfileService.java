@@ -35,6 +35,8 @@ public class ProfileService {
         dto.setPhone(psychologist.getPhone());
         dto.setFullName(psychologist.getFullName());
         dto.setEmail(psychologist.getEmail());
+        dto.setOrganizationName(psychologist.getOrganizationName());
+        dto.setServiceFormat(psychologist.getServiceFormat());
         dto.setEducation(psychologist.getEducation());
         dto.setSpecialization(psychologist.getSpecialization());
         dto.setDescription(psychologist.getDescription());
@@ -56,6 +58,12 @@ public class ProfileService {
         }
         if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
             existingPsychologist.setEmail(request.getEmail());
+        }
+        if (request.getOrganizationName() != null) {
+            existingPsychologist.setOrganizationName(request.getOrganizationName());
+        }
+        if (request.getServiceFormat() != null) {
+            existingPsychologist.setServiceFormat(request.getServiceFormat());
         }
         if (request.getEducation() != null) {
             existingPsychologist.setEducation(request.getEducation());
@@ -84,6 +92,21 @@ public class ProfileService {
                 throw new RuntimeException("Invalid age");
             }
             existingClient.setAge(request.getAge());
+        }
+        if (request.getCompanyName() != null) {
+            existingClient.setCompanyName(request.getCompanyName());
+        }
+        if (request.getWorkEmail() != null) {
+            existingClient.setWorkEmail(request.getWorkEmail());
+        }
+        if (request.getDepartment() != null) {
+            existingClient.setDepartment(request.getDepartment());
+        }
+        if (request.getPosition() != null) {
+            existingClient.setPosition(request.getPosition());
+        }
+        if (request.getEmployeeCode() != null) {
+            existingClient.setEmployeeCode(request.getEmployeeCode());
         }
 
         return clientRepository.save(existingClient);

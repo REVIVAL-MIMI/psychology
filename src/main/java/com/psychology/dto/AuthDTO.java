@@ -49,6 +49,8 @@ public class AuthDTO {
         @Email
         private String email;
 
+        private String organizationName;
+        private String serviceFormat;
         private String education;
         private String specialization;
         private String description;
@@ -65,8 +67,13 @@ public class AuthDTO {
         @NotBlank
         private String fullName;
 
-        @NotNull
         private Integer age;
+        private String companyName;
+        @Email
+        private String workEmail;
+        private String department;
+        private String position;
+        private String employeeCode;
     }
 
     @Data

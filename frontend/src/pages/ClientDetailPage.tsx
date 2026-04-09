@@ -22,7 +22,7 @@ export default function ClientDetailPage() {
 
   const deleteClient = async () => {
     if (!id) return;
-    const ok = window.confirm("Удалить клиента и все его данные? Это действие необратимо.");
+    const ok = window.confirm("Удалить сотрудника и все связанные данные? Это действие необратимо.");
     if (!ok) return;
     await api.del(`/clients/${id}`);
     navigate("/app/clients");
@@ -31,8 +31,8 @@ export default function ClientDetailPage() {
   return (
     <div className="page">
       <div className="page-header">
-        <h1>Карточка клиента</h1>
-        <p className="muted">Полная информация и активность.</p>
+        <h1>Карточка сотрудника</h1>
+        <p className="muted">Профиль участника программы и динамика сопровождения.</p>
       </div>
 
       {!client && <div className="muted">Загружаем…</div>}
@@ -41,15 +41,18 @@ export default function ClientDetailPage() {
         <div className="grid-2">
           <div className="card">
             <div className="card-title">{client.fullName}</div>
-            <div className="muted">Возраст: {client.age ?? "—"}</div>
+            {client.position && <div className="muted">Должность: {client.position}</div>}
+            {client.department && <div className="muted">Подразделение: {client.department}</div>}
+            {client.workEmail && <div className="muted">Рабочий email: {client.workEmail}</div>}
+            {client.employeeCode && <div className="muted">Табельный номер: {client.employeeCode}</div>}
             <div className="muted">Телефон: {client.phone ?? "—"}</div>
             <div className="card-actions">
-              <button className="button ghost" onClick={deleteClient}>Удалить клиента</button>
+              <button className="button ghost" onClick={deleteClient}>Удалить сотрудника</button>
             </div>
           </div>
           {stats && (
             <div className="card">
-              <div className="label">Сеансы</div>
+              <div className="label">Консультации</div>
               <div className="value">{stats.totalSessions}</div>
               <div className="muted">Посещаемость: {stats.attendanceRate}%</div>
             </div>
@@ -62,7 +65,7 @@ export default function ClientDetailPage() {
                   <li key={`s-${idx}`}>{new Date(s.date).toLocaleString()} — {s.status}</li>
                 ))}
                 {activity.recentJournalEntries?.map((j: any, idx: number) => (
-                  <li key={`j-${idx}`}>Запись в дневнике: {new Date(j.date).toLocaleDateString()} — {j.mood}</li>
+                  <li key={`j-${idx}`}>Запись в журнале: {new Date(j.date).toLocaleDateString()} — {j.mood}</li>
                 ))}
                 {activity.recentRecommendations?.map((r: any, idx: number) => (
                   <li key={`r-${idx}`}>Рекомендация: {r.title} — {r.completed ? "выполнена" : "активна"}</li>
@@ -75,7 +78,7 @@ export default function ClientDetailPage() {
 
       <div className="grid-2">
         <div className="card">
-          <h3>Дневник клиента</h3>
+          <h3>Журнал сотрудника</h3>
           <ul className="list">
             {journal.map((entry) => (
               <li key={entry.id} className="list-row">

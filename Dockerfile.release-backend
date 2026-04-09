@@ -1,0 +1,3 @@
+FROM psychology-backend:latest
+WORKDIR /app
+COPY docker-release/backend/app.jar /app/app.jar

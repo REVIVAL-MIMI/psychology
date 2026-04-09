@@ -9,6 +9,7 @@ public class CallDTO {
         private String type; // offer | answer | ice | hangup
         private Long senderId;
         private Long receiverId;
+        private Boolean videoEnabled;
         private String sdp;
         private String candidate;
         private String sdpMid;

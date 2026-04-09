@@ -2,27 +2,28 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
+import { companyProfile, getRoleLabel } from "../lib/branding";
 
 const navForRole = (role: string) => {
   if (role === "ROLE_PSYCHOLOGIST") {
     return [
       { to: "/app", label: "Дашборд", key: "dashboard" },
-      { to: "/app/clients", label: "Клиенты", key: "clients" },
-      { to: "/app/sessions", label: "Сеансы", key: "sessions" },
+      { to: "/app/clients", label: "Сотрудники", key: "clients" },
+      { to: "/app/sessions", label: "График и консультации", key: "sessions" },
       { to: "/app/recommendations", label: "Рекомендации", key: "recommendations" },
       { to: "/app/chat", label: "Чат", key: "chat" },
-      { to: "/app/invites", label: "Инвайты", key: "invites" }
+      { to: "/app/invites", label: "Приглашения", key: "invites" }
     ];
   }
   if (role === "ROLE_ADMIN") {
     return [
-      { to: "/app/admin", label: "Админ", key: "admin" }
+      { to: "/app/admin", label: "Координация", key: "admin" }
     ];
   }
   return [
     { to: "/app", label: "Дашборд", key: "dashboard" },
-    { to: "/app/sessions", label: "Сеансы", key: "sessions" },
-    { to: "/app/journal", label: "Дневник", key: "journal" },
+    { to: "/app/sessions", label: "Запись и консультации", key: "sessions" },
+    { to: "/app/journal", label: "Журнал", key: "journal" },
     { to: "/app/recommendations", label: "Рекомендации", key: "recommendations" },
     { to: "/app/chat", label: "Чат", key: "chat" }
   ];
@@ -186,8 +187,11 @@ export default function AppLayout() {
     <div className="app-shell">
       <header className="topbar">
         <Link to="/" className="brand">
-          <span className="brand-mark">Ψ</span>
-          <span>Psychology</span>
+          <span className="brand-mark">TBG</span>
+          <span className="brand-copy">
+            <strong>{companyProfile.platformName}</strong>
+            <small>{companyProfile.shortName}</small>
+          </span>
         </Link>
 
         {!(auth.userRole === "ROLE_PSYCHOLOGIST" && auth.verified === false) && (
@@ -221,7 +225,7 @@ export default function AppLayout() {
             <span className="icon-user user-chip-icon" aria-hidden="true" />
             <div>
               <div className="user-chip-name">{auth.fullName}</div>
-              <div className="user-chip-sub">{auth.userRole.replace("ROLE_", "")}</div>
+              <div className="user-chip-sub">{getRoleLabel(auth.userRole)}</div>
             </div>
           </Link>
           <button className="button" onClick={logout}>Выйти</button>

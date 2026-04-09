@@ -1,0 +1,21 @@
+FROM tbg-care-backend:local
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends nginx redis-server postgresql postgresql-contrib \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY docker-release/frontend/dist /usr/share/nginx/html
+COPY docker/all-in-one/nginx.conf /etc/nginx/sites-available/default
+COPY docker/all-in-one/entrypoint.sh /usr/local/bin/entrypoint.sh
+
+RUN chmod +x /usr/local/bin/entrypoint.sh \
+    && mkdir -p /data /app/uploads \
+    && chown -R postgres:postgres /var/lib/postgresql /var/run/postgresql /data
+
+VOLUME ["/var/lib/postgresql", "/data", "/app/uploads"]
+
+EXPOSE 80
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

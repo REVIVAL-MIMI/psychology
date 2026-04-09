@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
@@ -31,6 +32,12 @@ public class AuthService {
     private final OTPService otpService;
     private final JwtTokenProvider jwtTokenProvider;
     private final StringRedisTemplate stringRedisTemplate;
+
+    @Value("${app.organization.name:ООО «Телеком без границ»}")
+    private String defaultOrganizationName;
+
+    @Value("${app.psychologists.require-verification:false}")
+    private boolean psychologistVerificationRequired;
 
     private static final String BLACKLIST_PREFIX = "blacklist:";
     private static final String REFRESH_PREFIX = "refresh:";
@@ -102,11 +109,16 @@ public class AuthService {
         psychologist.setPhone(request.getPhone());
         psychologist.setFullName(request.getFullName());
         psychologist.setEmail(request.getEmail());
+        psychologist.setOrganizationName(hasText(request.getOrganizationName()) ? request.getOrganizationName() : defaultOrganizationName);
+        psychologist.setServiceFormat(request.getServiceFormat());
         psychologist.setEducation(request.getEducation());
         psychologist.setSpecialization(request.getSpecialization());
         psychologist.setDescription(request.getDescription());
         psychologist.setRole(UserRole.ROLE_PSYCHOLOGIST);
-        psychologist.setVerified(false); // Требуется верификация админом
+        psychologist.setVerified(!psychologistVerificationRequired);
+        if (!psychologistVerificationRequired) {
+            psychologist.setVerifiedAt(LocalDateTime.now());
+        }
 
         psychologistRepository.save(psychologist);
 
@@ -136,6 +148,11 @@ public class AuthService {
         client.setPhone(request.getPhone());
         client.setFullName(request.getFullName());
         client.setAge(request.getAge());
+        client.setCompanyName(hasText(request.getCompanyName()) ? request.getCompanyName() : defaultOrganizationName);
+        client.setWorkEmail(request.getWorkEmail());
+        client.setDepartment(request.getDepartment());
+        client.setPosition(request.getPosition());
+        client.setEmployeeCode(request.getEmployeeCode());
         client.setPsychologist(invite.getPsychologist());
         client.setLinkedAt(LocalDateTime.now());
         client.setRole(UserRole.ROLE_CLIENT);
@@ -232,5 +249,9 @@ public class AuthService {
             return ((Client) user).getFullName();
         }
         return "";
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 }

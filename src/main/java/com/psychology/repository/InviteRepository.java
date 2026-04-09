@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Repository
@@ -19,4 +20,5 @@ public interface InviteRepository extends JpaRepository<Invite, Long> {
 
     boolean existsByToken(String token);
     List<Invite> findByPsychologistIdAndUsedFalse(Long psychologistId);
+    Optional<Invite> findFirstByPsychologistIdAndUsedFalseAndExpiresAtAfterOrderByCreatedAtDesc(Long psychologistId, LocalDateTime now);
 }

@@ -72,15 +72,15 @@ export default function JournalPage() {
   return (
     <div className="page">
       <div className="page-header">
-        <h1>Дневник</h1>
-        <p className="muted">Записывайте мысли и наблюдения.</p>
+        <h1>Журнал самонаблюдения</h1>
+        <p className="muted">Фиксируйте состояние, рабочие триггеры и наблюдения между консультациями.</p>
       </div>
 
       <div className="card">
         <h3>Новая запись</h3>
         <div className="form">
           <label>
-            Текст
+            Текст записи
             <textarea
               value={form.content}
               onChange={(e) => setForm({ ...form, content: e.target.value.slice(0, MAX_LENGTH) })}
@@ -89,8 +89,8 @@ export default function JournalPage() {
             <div className="muted">Осталось символов: {remaining}</div>
           </label>
           <label>
-            Настроение
-            <input value={form.mood} onChange={(e) => setForm({ ...form, mood: e.target.value })} placeholder="Спокойное, тревожное…" />
+            Самочувствие / настроение
+            <input value={form.mood} onChange={(e) => setForm({ ...form, mood: e.target.value })} placeholder="Спокойное, тревожное, усталое…" />
           </label>
           <label>
             Теги (через запятую)

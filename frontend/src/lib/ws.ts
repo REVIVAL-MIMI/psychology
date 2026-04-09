@@ -99,19 +99,22 @@ export function connectWs(token?: string) {
     socket = null;
   }
 
-  socket = new WebSocket(getWsUrl());
+  const ws = new WebSocket(getWsUrl());
+  socket = ws;
 
-  socket.onopen = () => {
-    if (!socket) return;
+  ws.onopen = () => {
+    if (socket !== ws) return;
     const headers = {
       "accept-version": "1.2",
       Authorization: `Bearer ${authToken}`,
       host: "localhost"
     };
-    socket.send(frame("CONNECT", headers));
+    ws.send(frame("CONNECT", headers));
   };
 
-  socket.onmessage = (event) => {
+  ws.onmessage = (event) => {
+    if (socket !== ws) return;
+    if (typeof event.data !== "string") return;
     const frames = parseFrames(event.data);
     frames.forEach((raw) => {
       const parsed = parseMessageFrame(raw);
@@ -138,14 +141,18 @@ export function connectWs(token?: string) {
     });
   };
 
-  socket.onclose = () => {
+  ws.onclose = () => {
+    if (socket !== ws) return;
+    socket = null;
     connected = false;
     connecting = false;
     stopHeartbeat();
     scheduleReconnect();
   };
 
-  socket.onerror = () => {
+  ws.onerror = () => {
+    if (socket !== ws) return;
+    socket = null;
     connected = false;
     connecting = false;
     stopHeartbeat();

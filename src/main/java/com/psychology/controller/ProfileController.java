@@ -129,6 +129,8 @@ public class ProfileController {
     public static class PsychologistProfileUpdateRequest {
         private String fullName;
         private String email;
+        private String organizationName;
+        private String serviceFormat;
         private String education;
         private String specialization;
         private String description;
@@ -139,6 +141,11 @@ public class ProfileController {
     public static class ClientProfileUpdateRequest {
         private String fullName;
         private Integer age;
+        private String companyName;
+        private String workEmail;
+        private String department;
+        private String position;
+        private String employeeCode;
     }
 
     @Data

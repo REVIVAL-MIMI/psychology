@@ -9,7 +9,6 @@ import com.psychology.repository.MessageRepository;
 import com.psychology.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,8 +23,7 @@ public class ChatService {
 
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
-    private final SimpMessagingTemplate messagingTemplate;
-    private final NotificationService notificationService; // Добавляем зависимость
+    private final NotificationService notificationService;
 
     @Transactional
     public ChatDTO.MessageResponse sendMessage(User sender, ChatDTO.SendMessageRequest request) {
@@ -90,7 +88,7 @@ public class ChatService {
             throw new RuntimeException("Cannot access this conversation");
         }
 
-        List<Message> messages = messageRepository.findConversation(currentUser.getId(), otherUserId);
+        List<Message> messages = messageRepository.findConversationWithUsers(currentUser.getId(), otherUserId);
 
         return messages.stream()
                 .map(this::convertToDTO)
@@ -101,7 +99,7 @@ public class ChatService {
     public List<ChatDTO.MessageResponse> getRecentMessages(User user, LocalDateTime since) {
         log.info("Getting recent messages for user {} since {}", user.getId(), since);
 
-        List<Message> messages = messageRepository.findRecentMessages(user.getId(), since);
+        List<Message> messages = messageRepository.findRecentMessagesWithUsers(user.getId(), since);
 
         return messages.stream()
                 .map(this::convertToDTO)
@@ -131,11 +129,24 @@ public class ChatService {
 
     @Transactional(readOnly = true)
     public List<ChatDTO.MessageResponse> getUnreadMessages(User user) {
-        List<Message> messages = messageRepository.findUnreadMessages(user.getId());
+        List<Message> messages = messageRepository.findUnreadMessagesWithUsers(user.getId());
 
         return messages.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public boolean canContact(User sender, Long receiverId) {
+        if (sender == null || receiverId == null) {
+            return false;
+        }
+        if (sender.getId().equals(receiverId)) {
+            return false;
+        }
+        return userRepository.findById(receiverId)
+                .map(receiver -> canSendMessage(sender, receiver))
+                .orElse(false);
     }
 
     private boolean canSendMessage(User sender, User receiver) {

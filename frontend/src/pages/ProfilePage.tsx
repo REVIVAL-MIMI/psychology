@@ -1,6 +1,7 @@
 import { ChangeEvent, useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { getRoleSubtitle } from "../lib/branding";
 import { formatPhone, normalizePhone } from "../lib/phone";
 
 export default function ProfilePage() {
@@ -69,6 +70,7 @@ export default function ProfilePage() {
     <div className="page">
       <div className="page-header">
         <h1>Профиль</h1>
+        <p className="muted">{getRoleSubtitle(auth?.userRole)}</p>
       </div>
 
       <div className="card">
@@ -83,6 +85,18 @@ export default function ProfilePage() {
               <label>
                 Email
                 <input value={form.email ?? ""} onChange={update("email")} />
+              </label>
+            )}
+            {auth?.userRole === "ROLE_PSYCHOLOGIST" && (
+              <label>
+                Организация
+                <input value={form.organizationName ?? ""} onChange={update("organizationName")} />
+              </label>
+            )}
+            {auth?.userRole === "ROLE_PSYCHOLOGIST" && (
+              <label>
+                Формат работы
+                <input value={form.serviceFormat ?? ""} onChange={update("serviceFormat")} />
               </label>
             )}
             {auth?.userRole === "ROLE_PSYCHOLOGIST" && (
@@ -105,7 +119,37 @@ export default function ProfilePage() {
             )}
             {auth?.userRole === "ROLE_CLIENT" && (
               <label>
-                Возраст
+                Компания
+                <input value={form.companyName ?? ""} onChange={update("companyName")} />
+              </label>
+            )}
+            {auth?.userRole === "ROLE_CLIENT" && (
+              <label>
+                Рабочий email
+                <input type="email" value={form.workEmail ?? ""} onChange={update("workEmail")} />
+              </label>
+            )}
+            {auth?.userRole === "ROLE_CLIENT" && (
+              <label>
+                Подразделение
+                <input value={form.department ?? ""} onChange={update("department")} />
+              </label>
+            )}
+            {auth?.userRole === "ROLE_CLIENT" && (
+              <label>
+                Должность
+                <input value={form.position ?? ""} onChange={update("position")} />
+              </label>
+            )}
+            {auth?.userRole === "ROLE_CLIENT" && (
+              <label>
+                Табельный номер
+                <input value={form.employeeCode ?? ""} onChange={update("employeeCode")} />
+              </label>
+            )}
+            {auth?.userRole === "ROLE_CLIENT" && (
+              <label>
+                Возраст (опционально)
                 <input type="number" value={form.age ?? ""} onChange={update("age")} />
               </label>
             )}

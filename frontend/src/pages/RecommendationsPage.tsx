@@ -116,6 +116,7 @@ export default function RecommendationsPage() {
     <div className="page">
       <div className="page-header">
         <h1>Рекомендации</h1>
+        <p className="muted">Персональные шаги поддержки между консультациями.</p>
       </div>
 
       {auth?.userRole === "ROLE_PSYCHOLOGIST" && (
@@ -132,9 +133,9 @@ export default function RecommendationsPage() {
             <h3>Новая рекомендация</h3>
             <div className="form grid-2">
               <label>
-                Клиент
+                Сотрудник
                 <select value={clientId} onChange={(e) => { setClientId(e.target.value); loadForClient(e.target.value); }}>
-                  <option value="">Выберите клиента</option>
+                  <option value="">Выберите сотрудника</option>
                   {clients.map((c) => (
                     <option key={c.id} value={c.id}>{c.fullName}</option>
                   ))}
@@ -146,7 +147,7 @@ export default function RecommendationsPage() {
               </label>
               <label>
                 Описание
-                <input value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} />
+                <input value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} placeholder="Что важно выполнить до следующей консультации" />
               </label>
               <label>
                 Дедлайн
@@ -177,7 +178,7 @@ export default function RecommendationsPage() {
         <div className="section-header">
           <div>
             <div className="section-title">Список рекомендаций</div>
-            <div className="section-note">Текущие и завершённые практики</div>
+            <div className="section-note">Актуальные и завершенные шаги поддержки</div>
           </div>
           <div className="section-meta">{recommendations.length} записей</div>
         </div>

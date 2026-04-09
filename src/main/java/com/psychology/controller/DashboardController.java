@@ -114,6 +114,8 @@ public class DashboardController {
         private String fullName;
         private String specialization;
         private String email;
+        private String organizationName;
+        private String serviceFormat;
     }
 
     @Data

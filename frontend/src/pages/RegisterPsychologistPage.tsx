@@ -2,6 +2,7 @@ import { ChangeEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
+import { companyProfile } from "../lib/branding";
 import { formatPhone, normalizePhone } from "../lib/phone";
 
 const initialForm = {
@@ -9,6 +10,8 @@ const initialForm = {
   otp: "",
   fullName: "",
   email: "",
+  organizationName: companyProfile.companyName,
+  serviceFormat: "",
   education: "",
   specialization: "",
   description: ""
@@ -63,8 +66,11 @@ export default function RegisterPsychologistPage() {
       <div className="auth-card">
         <div className="auth-header">
           <div className="pill">Психолог</div>
-          <h2>Профиль практики</h2>
-          <p className="muted">Подтвердите номер и заполните анкету специалиста.</p>
+          <h2>Подключение специалиста</h2>
+          <p className="muted">
+            Подтвердите номер и заполните анкету психолога для участия в программе.
+            Доступ активируется сразу после регистрации.
+          </p>
         </div>
 
         <div className="form">
@@ -92,6 +98,14 @@ export default function RegisterPsychologistPage() {
               <label>
                 Email
                 <input type="email" value={form.email} onChange={update("email")} />
+              </label>
+              <label>
+                Организация
+                <input value={form.organizationName} onChange={update("organizationName")} />
+              </label>
+              <label>
+                Формат работы
+                <input value={form.serviceFormat} onChange={update("serviceFormat")} placeholder="Индивидуальные консультации, кризисная поддержка" />
               </label>
               <label>
                 Образование
@@ -133,7 +147,7 @@ export default function RegisterPsychologistPage() {
               onClick={register}
               disabled={loading || !form.otp || !form.fullName || !form.email || !consent}
             >
-              {loading ? "Создаем…" : "Создать профиль"}
+              {loading ? "Отправляем…" : "Отправить анкету"}
             </button>
           )}
         </div>
@@ -141,12 +155,12 @@ export default function RegisterPsychologistPage() {
 
       <div className="auth-aside">
         <div className="aside-card">
-          <h3>Верификация</h3>
-          <p>После отправки анкеты профиль проходит проверку администратором.</p>
+          <h3>Подключение без ожидания</h3>
+          <p>Психолог получает доступ сразу после регистрации.</p>
         </div>
         <div className="aside-card">
           <h3>Рабочее пространство</h3>
-          <p>Клиенты, расписание, рекомендации и чат — без лишнего.</p>
+          <p>Сотрудники, консультации, рекомендации и чат собраны в едином интерфейсе.</p>
         </div>
       </div>
     </div>

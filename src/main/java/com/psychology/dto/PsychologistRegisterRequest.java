@@ -19,6 +19,8 @@ public class PsychologistRegisterRequest {
     @Email
     private String email;
 
+    private String organizationName;
+    private String serviceFormat;
     private String education;
     private String specialization;
     private String description;
