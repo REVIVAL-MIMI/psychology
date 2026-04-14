@@ -2,7 +2,7 @@ import { ChangeEvent, useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { getRoleSubtitle } from "../lib/branding";
-import { formatPhone, normalizePhone } from "../lib/phone";
+import { normalizeEmail } from "../lib/email";
 
 export default function ProfilePage() {
   const { auth, setAuth } = useAuth();
@@ -35,8 +35,8 @@ export default function ProfilePage() {
     setPhoneLoading(true);
     setPhoneStatus(null);
     try {
-      await api.post("/profile/phone/send-otp", { phone: normalizePhone(phoneForm.phone) });
-      setPhoneStatus("Код отправлен");
+      await api.post("/profile/email/send-otp", { phone: normalizeEmail(phoneForm.phone) });
+      setPhoneStatus("Код отправлен на email");
     } catch {
       setPhoneStatus("Не удалось отправить код");
     } finally {
@@ -48,19 +48,19 @@ export default function ProfilePage() {
     setPhoneLoading(true);
     setPhoneStatus(null);
     try {
-      const data = await api.post("/profile/phone/confirm", {
-        phone: normalizePhone(phoneForm.phone),
+      const data = await api.post("/profile/email/confirm", {
+        phone: normalizeEmail(phoneForm.phone),
         otp: phoneForm.otp
       });
       // обновляем auth в localStorage через setAuth в контексте
       if (auth) {
         const next = { ...auth, ...data };
         setForm((prev: any) => ({ ...prev, phone: data.phone }));
-        setPhoneStatus("Номер обновлен");
+        setPhoneStatus("Email обновлен");
         setAuth(next);
       }
     } catch {
-      setPhoneStatus("Не удалось обновить номер");
+      setPhoneStatus("Не удалось обновить email");
     } finally {
       setPhoneLoading(false);
     }
@@ -160,16 +160,15 @@ export default function ProfilePage() {
       </div>
 
       <div className="card">
-        <h3>Сменить номер телефона</h3>
+        <h3>Сменить email для входа</h3>
         <div className="form grid-2">
           <label>
-            Новый номер
+            Новый email
             <input
-              type="tel"
+              type="email"
               value={phoneForm.phone}
-              onChange={(e) => setPhoneForm((prev) => ({ ...prev, phone: formatPhone(e.target.value) }))}
-              placeholder="+7 (999) 000-00-00"
-              inputMode="tel"
+              onChange={(e) => setPhoneForm((prev) => ({ ...prev, phone: e.target.value }))}
+              placeholder="name@telecombg.ru"
             />
           </label>
           <label>

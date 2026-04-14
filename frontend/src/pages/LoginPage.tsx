@@ -2,15 +2,14 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
-import { companyProfile } from "../lib/branding";
-import { formatPhone, normalizePhone } from "../lib/phone";
+import { normalizeEmail } from "../lib/email";
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const { setAuth, isAuthenticated } = useAuth();
-  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
-  const [stage, setStage] = useState<"phone" | "otp">("phone");
+  const [stage, setStage] = useState<"email" | "otp">("email");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -24,10 +23,10 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      await api.post("/auth/send-otp", { phone: normalizePhone(phone) }, { skipAuth: true });
+      await api.post("/auth/send-otp", { phone: normalizeEmail(email) }, { skipAuth: true });
       setStage("otp");
     } catch (e) {
-      setError("Не удалось отправить код. Проверьте номер.");
+      setError("Не удалось отправить код. Проверьте email.");
     } finally {
       setLoading(false);
     }
@@ -39,7 +38,7 @@ export default function LoginPage() {
     try {
       const data = await api.post<{ accessToken: string; userId: number; userRole: string; fullName: string; phone: string; verified?: boolean }>(
         "/auth/verify-otp",
-        { phone: normalizePhone(phone), otp },
+        { phone: normalizeEmail(email), otp },
         { skipAuth: true }
       );
       setAuth(data as any);
@@ -56,21 +55,20 @@ export default function LoginPage() {
       <div className="auth-card">
         <div className="auth-header">
           <div className="pill">Вход</div>
-          <h2>Добро пожаловать в {companyProfile.platformName}</h2>
+          <h2>Добро пожаловать</h2>
           <p className="muted">
-            Используйте номер телефона, который вы указывали при регистрации.
+            Используйте email, который вы указывали при регистрации.
           </p>
         </div>
 
         <div className="form">
           <label>
-            Номер телефона
+            Рабочий email
             <input
-              type="tel"
-              placeholder="+79990000000"
-              value={phone}
-              onChange={(e) => setPhone(formatPhone(e.target.value))}
-              inputMode="tel"
+              type="email"
+              placeholder="name@telecombg.ru"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </label>
           {stage === "otp" && (
@@ -87,8 +85,8 @@ export default function LoginPage() {
 
           {error && <div className="error">{error}</div>}
 
-          {stage === "phone" ? (
-            <button className="button" onClick={sendOtp} disabled={loading || !phone}>
+          {stage === "email" ? (
+            <button className="button" onClick={sendOtp} disabled={loading || !email}>
               {loading ? "Отправляем…" : "Отправить код"}
             </button>
           ) : (

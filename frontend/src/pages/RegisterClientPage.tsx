@@ -3,16 +3,14 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { companyProfile } from "../lib/branding";
-import { formatPhone, normalizePhone } from "../lib/phone";
+import { normalizeEmail } from "../lib/email";
 
 const initialForm = {
   phone: "",
   otp: "",
   fullName: "",
-  workEmail: "",
   department: "",
-  position: "",
-  employeeCode: ""
+  position: ""
 };
 
 type InviteValidation = {
@@ -49,9 +47,9 @@ export default function RegisterClientPage() {
     setLoading(true);
     setError(null);
     try {
-      await api.post("/auth/send-otp", { phone: normalizePhone(form.phone) }, { skipAuth: true });
+      await api.post("/auth/send-otp", { phone: normalizeEmail(form.phone) }, { skipAuth: true });
     } catch {
-      setError("Не удалось отправить код. Проверьте номер.");
+      setError("Не удалось отправить код. Проверьте email.");
     } finally {
       setLoading(false);
     }
@@ -61,16 +59,16 @@ export default function RegisterClientPage() {
     setLoading(true);
     setError(null);
     try {
+      const loginEmail = normalizeEmail(form.phone);
       const payload = {
-        phone: normalizePhone(form.phone),
+        phone: loginEmail,
         otp: form.otp,
         fullName: form.fullName,
         age: null,
         companyName: invite?.organizationName ?? companyProfile.companyName,
-        workEmail: form.workEmail || null,
+        workEmail: loginEmail,
         department: form.department || null,
-        position: form.position || null,
-        employeeCode: form.employeeCode || null
+        position: form.position || null
       };
       const data = await api.post(
         `/auth/client/register?inviteToken=${encodeURIComponent(inviteToken)}`,
@@ -107,7 +105,7 @@ export default function RegisterClientPage() {
           <div className="pill">Сотрудник</div>
           <h2>Активация доступа</h2>
           <p className="muted">
-            Подтвердите номер и заполните профиль участника программы поддержки сотрудников.
+            Подтвердите email и заполните профиль участника программы поддержки сотрудников.
           </p>
         </div>
 
@@ -121,13 +119,12 @@ export default function RegisterClientPage() {
 
         <div className="form">
           <label>
-            Номер телефона
+            Email
             <input
-              type="tel"
+              type="email"
               value={form.phone}
-              onChange={(e) => setForm((prev) => ({ ...prev, phone: formatPhone(e.target.value) }))}
-              placeholder="+7 (999) 000-00-00"
-              inputMode="tel"
+              onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
+              placeholder="name@telecombg.ru"
             />
           </label>
           <div className="row">
@@ -144,20 +141,12 @@ export default function RegisterClientPage() {
             <input value={form.fullName} onChange={update("fullName")} />
           </label>
           <label>
-            Рабочий email
-            <input type="email" value={form.workEmail} onChange={update("workEmail")} placeholder="name@telecombg.ru" />
-          </label>
-          <label>
             Подразделение
             <input value={form.department} onChange={update("department")} placeholder="Техническая поддержка" />
           </label>
           <label>
             Должность
             <input value={form.position} onChange={update("position")} placeholder="Инженер, менеджер, аналитик" />
-          </label>
-          <label>
-            Табельный номер
-            <input value={form.employeeCode} onChange={update("employeeCode")} placeholder="Опционально" />
           </label>
           <label className="checkbox-row">
             <input

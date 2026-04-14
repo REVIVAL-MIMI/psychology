@@ -33,10 +33,12 @@ export default function DashboardPage() {
 
   if (!auth) return null;
 
-  const formatEmployeeMeta = (employee: any) =>
-    [employee.department, employee.position, employee.workEmail]
+  const formatEmployeeMeta = (employee: any) => {
+    const oneEmail = employee.phone ?? employee.workEmail;
+    return [employee.department, employee.position, oneEmail ? `Email: ${oneEmail}` : null]
       .filter(Boolean)
-      .join(" • ") || `Телефон: ${employee.phone ?? "—"}`;
+      .join(" • ") || "Профиль сотрудника";
+  };
 
   return (
     <div className="page">

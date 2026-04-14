@@ -43,9 +43,8 @@ export default function ClientDetailPage() {
             <div className="card-title">{client.fullName}</div>
             {client.position && <div className="muted">Должность: {client.position}</div>}
             {client.department && <div className="muted">Подразделение: {client.department}</div>}
-            {client.workEmail && <div className="muted">Рабочий email: {client.workEmail}</div>}
             {client.employeeCode && <div className="muted">Табельный номер: {client.employeeCode}</div>}
-            <div className="muted">Телефон: {client.phone ?? "—"}</div>
+            <div className="muted">Email: {client.phone ?? client.workEmail ?? "—"}</div>
             <div className="card-actions">
               <button className="button ghost" onClick={deleteClient}>Удалить сотрудника</button>
             </div>

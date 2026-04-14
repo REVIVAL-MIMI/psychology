@@ -27,7 +27,7 @@ export default function ClientsPage() {
         <div className="row">
           <input
             className="search"
-            placeholder="Поиск по имени или телефону"
+            placeholder="Поиск по имени или email"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -44,8 +44,7 @@ export default function ClientsPage() {
             <div className="muted">
               {[client.department, client.position].filter(Boolean).join(" • ") || "Профиль сотрудника"}
             </div>
-            {client.workEmail && <div className="muted">Рабочий email: {client.workEmail}</div>}
-            <div className="muted">Телефон: {client.phone ?? "—"}</div>
+            <div className="muted">Email: {client.phone ?? client.workEmail ?? "—"}</div>
             <div className="card-actions">
               <Link to={`/app/clients/${client.id}`} className="button ghost">Открыть</Link>
             </div>

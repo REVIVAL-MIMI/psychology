@@ -18,8 +18,6 @@ export default function ChatPage() {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [screenSharing, setScreenSharing] = useState(false);
-  const [ringtoneOn, setRingtoneOn] = useState(false);
-  const [ringbackOn, setRingbackOn] = useState(false);
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [callExpanded, setCallExpanded] = useState(false);
@@ -31,9 +29,12 @@ export default function ChatPage() {
   const messagesRef = useRef<HTMLDivElement | null>(null);
   const callPanelRef = useRef<HTMLDivElement | null>(null);
   const ringCtxRef = useRef<AudioContext | null>(null);
-  const ringOscRef = useRef<OscillatorNode | null>(null);
-  const ringGainRef = useRef<GainNode | null>(null);
-  const ringbackTimerRef = useRef<number | null>(null);
+  const ringNodesRef = useRef<Array<{ osc: OscillatorNode; gain: GainNode }>>([]);
+  const noteTimersRef = useRef<number[]>([]);
+  const ringtoneLoopTimerRef = useRef<number | null>(null);
+  const ringbackLoopTimerRef = useRef<number | null>(null);
+  const ringtoneActiveRef = useRef(false);
+  const ringbackActiveRef = useRef(false);
   const videoSenderRef = useRef<RTCRtpSender | null>(null);
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
   const callStateRef = useRef(callState);
@@ -341,61 +342,119 @@ export default function ChatPage() {
     }
   };
 
-  const playTone = (freq: number, gainValue: number) => {
+  const queueNote = (delayMs: number, callback: () => void) => {
+    const timer = window.setTimeout(callback, delayMs);
+    noteTimersRef.current.push(timer);
+  };
+
+  const clearQueuedNotes = () => {
+    noteTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    noteTimersRef.current = [];
+  };
+
+  const playTone = (freq: number, gainValue: number, durationMs: number, wave: OscillatorType) => {
     ensureAudio();
     const ctx = ringCtxRef.current!;
     if (ctx.state === "suspended") {
       ctx.resume().catch(() => null);
     }
+    const now = ctx.currentTime;
+    const durationSec = durationMs / 1000;
+
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.value = freq;
-    gain.gain.value = gainValue;
+    osc.type = wave;
+    osc.frequency.setValueAtTime(freq, now);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(gainValue, now + 0.016);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + durationSec);
     osc.connect(gain).connect(ctx.destination);
-    osc.start();
-    ringOscRef.current = osc;
-    ringGainRef.current = gain;
+    osc.start(now);
+    osc.stop(now + durationSec + 0.04);
+
+    const harmonic = ctx.createOscillator();
+    const harmonicGain = ctx.createGain();
+    harmonic.type = "sine";
+    harmonic.frequency.setValueAtTime(freq * 2, now);
+    harmonicGain.gain.setValueAtTime(gainValue * 0.2, now);
+    harmonicGain.gain.exponentialRampToValueAtTime(0.0001, now + durationSec);
+    harmonic.connect(harmonicGain).connect(ctx.destination);
+    harmonic.start(now);
+    harmonic.stop(now + durationSec + 0.04);
+
+    ringNodesRef.current.push({ osc, gain });
+    ringNodesRef.current.push({ osc: harmonic, gain: harmonicGain });
   };
 
   const stopTone = () => {
-    ringOscRef.current?.stop();
-    ringOscRef.current?.disconnect();
-    ringGainRef.current?.disconnect();
-    ringOscRef.current = null;
-    ringGainRef.current = null;
+    ringNodesRef.current.forEach(({ osc, gain }) => {
+      try {
+        osc.stop();
+      } catch {
+        // already stopped
+      }
+      osc.disconnect();
+      gain.disconnect();
+    });
+    ringNodesRef.current = [];
+  };
+
+  const stopAllRingerAudio = () => {
+    if (ringtoneLoopTimerRef.current !== null) {
+      window.clearTimeout(ringtoneLoopTimerRef.current);
+      ringtoneLoopTimerRef.current = null;
+    }
+    if (ringbackLoopTimerRef.current !== null) {
+      window.clearTimeout(ringbackLoopTimerRef.current);
+      ringbackLoopTimerRef.current = null;
+    }
+    clearQueuedNotes();
+    stopTone();
   };
 
   const startRingtone = () => {
-    if (ringtoneOn) return;
-    setRingtoneOn(true);
-    playTone(680, 0.04);
+    if (ringtoneActiveRef.current) return;
+    ringtoneActiveRef.current = true;
+    const pattern = () => {
+      clearQueuedNotes();
+      playTone(1046.5, 0.028, 240, "triangle");
+      queueNote(220, () => playTone(1318.5, 0.026, 250, "triangle"));
+      queueNote(460, () => playTone(1567.98, 0.024, 300, "triangle"));
+      queueNote(740, () => playTone(1318.5, 0.02, 320, "sine"));
+      ringtoneLoopTimerRef.current = window.setTimeout(pattern, 2200);
+    };
+    pattern();
   };
 
   const stopRingtone = () => {
-    setRingtoneOn(false);
+    ringtoneActiveRef.current = false;
+    if (ringtoneLoopTimerRef.current !== null) {
+      window.clearTimeout(ringtoneLoopTimerRef.current);
+      ringtoneLoopTimerRef.current = null;
+    }
+    clearQueuedNotes();
     stopTone();
   };
 
   const startRingback = () => {
-    if (ringbackOn) return;
-    setRingbackOn(true);
+    if (ringbackActiveRef.current) return;
+    ringbackActiveRef.current = true;
     const pattern = () => {
-      playTone(440, 0.04);
-      ringbackTimerRef.current = window.setTimeout(() => {
-        stopTone();
-        ringbackTimerRef.current = window.setTimeout(pattern, 900);
-      }, 900);
+      clearQueuedNotes();
+      playTone(440, 0.02, 430, "sine");
+      queueNote(560, () => playTone(480, 0.02, 430, "sine"));
+      ringbackLoopTimerRef.current = window.setTimeout(pattern, 2000);
     };
     pattern();
   };
 
   const stopRingback = () => {
-    setRingbackOn(false);
-    if (ringbackTimerRef.current) {
-      window.clearTimeout(ringbackTimerRef.current);
-      ringbackTimerRef.current = null;
+    ringbackActiveRef.current = false;
+    if (ringbackLoopTimerRef.current !== null) {
+      window.clearTimeout(ringbackLoopTimerRef.current);
+      ringbackLoopTimerRef.current = null;
     }
+    clearQueuedNotes();
     stopTone();
   };
 
@@ -519,6 +578,14 @@ export default function ChatPage() {
     }
     el.requestFullscreen?.().catch(() => null);
   };
+
+  useEffect(() => {
+    return () => {
+      stopAllRingerAudio();
+      ringCtxRef.current?.close().catch(() => null);
+      ringCtxRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     callStateRef.current = callState;

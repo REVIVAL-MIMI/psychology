@@ -3,13 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { companyProfile } from "../lib/branding";
-import { formatPhone, normalizePhone } from "../lib/phone";
+import { normalizeEmail } from "../lib/email";
 
 const initialForm = {
   phone: "",
   otp: "",
   fullName: "",
-  email: "",
   organizationName: companyProfile.companyName,
   serviceFormat: "",
   education: "",
@@ -21,7 +20,7 @@ export default function RegisterPsychologistPage() {
   const navigate = useNavigate();
   const { setAuth } = useAuth();
   const [form, setForm] = useState(initialForm);
-  const [stage, setStage] = useState<"phone" | "profile">("phone");
+  const [stage, setStage] = useState<"email" | "profile">("email");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [consent, setConsent] = useState(false);
@@ -34,10 +33,10 @@ export default function RegisterPsychologistPage() {
     setLoading(true);
     setError(null);
     try {
-      await api.post("/auth/send-otp", { phone: normalizePhone(form.phone) }, { skipAuth: true });
+      await api.post("/auth/send-otp", { phone: normalizeEmail(form.phone) }, { skipAuth: true });
       setStage("profile");
     } catch {
-      setError("Не удалось отправить код. Проверьте номер.");
+      setError("Не удалось отправить код. Проверьте email.");
     } finally {
       setLoading(false);
     }
@@ -47,9 +46,10 @@ export default function RegisterPsychologistPage() {
     setLoading(true);
     setError(null);
     try {
+      const loginEmail = normalizeEmail(form.phone);
       const data = await api.post(
         "/auth/psychologist/register",
-        { ...form, phone: normalizePhone(form.phone) },
+        { ...form, phone: loginEmail, email: loginEmail },
         { skipAuth: true }
       );
       setAuth(data as any);
@@ -68,20 +68,19 @@ export default function RegisterPsychologistPage() {
           <div className="pill">Психолог</div>
           <h2>Подключение специалиста</h2>
           <p className="muted">
-            Подтвердите номер и заполните анкету психолога для участия в программе.
+            Подтвердите email и заполните анкету психолога для участия в программе.
             Доступ активируется сразу после регистрации.
           </p>
         </div>
 
         <div className="form">
           <label>
-            Номер телефона
+            Рабочий email
             <input
-              type="tel"
+              type="email"
               value={form.phone}
-              onChange={(e) => setForm((prev) => ({ ...prev, phone: formatPhone(e.target.value) }))}
-              placeholder="+7 (999) 000-00-00"
-              inputMode="tel"
+              onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
+              placeholder="name@telecombg.ru"
             />
           </label>
           {stage === "profile" && (
@@ -93,10 +92,6 @@ export default function RegisterPsychologistPage() {
               <label>
                 ФИО
                 <input value={form.fullName} onChange={update("fullName")} />
-              </label>
-              <label>
-                Email
-                <input type="email" value={form.email} onChange={update("email")} />
               </label>
               <label>
                 Организация
@@ -136,7 +131,7 @@ export default function RegisterPsychologistPage() {
 
           {error && <div className="error">{error}</div>}
 
-          {stage === "phone" ? (
+          {stage === "email" ? (
             <button className="button" onClick={sendOtp} disabled={loading || !form.phone}>
               {loading ? "Отправляем…" : "Отправить код"}
             </button>
@@ -144,7 +139,7 @@ export default function RegisterPsychologistPage() {
             <button
               className="button"
               onClick={register}
-              disabled={loading || !form.otp || !form.fullName || !form.email || !consent}
+              disabled={loading || !form.otp || !form.fullName || !consent}
             >
               {loading ? "Отправляем…" : "Отправить анкету"}
             </button>

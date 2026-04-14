@@ -10,10 +10,10 @@ export default function HomePage() {
           <h1>
             Психологическая поддержка сотрудников
             <br />
-            {companyProfile.shortName} в удобном онлайн-формате
+            {companyProfile.shortName} в онлайн-формате
           </h1>
           <p>
-            {companyProfile.platformName} объединяет дистанционные консультации, журнал самонаблюдения,
+            Платформа объединяет дистанционные консультации, журнал самонаблюдения,
             рекомендации и чат в одном понятном интерфейсе.
           </p>
           <div className="hero-actions">
