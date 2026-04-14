@@ -1,0 +1,123 @@
+services:
+  edge:
+    image: nginx:1.25-alpine
+    container_name: tbg-edge
+    restart: unless-stopped
+    depends_on:
+      - frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/timeweb/nginx-ssl.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/timeweb/certs:/etc/nginx/certs:ro
+
+  backend:
+    build: .
+    container_name: tbg-backend
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-psychology_db}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-psychology_user}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-psychology_pass}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO:-update}
+      APP_SEED_ENABLED: ${APP_SEED_ENABLED:-false}
+      APP_ORGANIZATION_NAME: ${APP_ORGANIZATION_NAME:-ООО «Телеком без границ»}
+      APP_PSYCHOLOGISTS_REQUIRE_VERIFICATION: ${APP_PSYCHOLOGISTS_REQUIRE_VERIFICATION:-false}
+      APP_TELEGRAM_ENABLED: ${APP_TELEGRAM_ENABLED:-false}
+      APP_TELEGRAM_BOT_TOKEN: ${APP_TELEGRAM_BOT_TOKEN:-}
+      APP_TELEGRAM_POLLING_ENABLED: ${APP_TELEGRAM_POLLING_ENABLED:-true}
+      APP_TELEGRAM_POLLING_FIXED_DELAY_MS: ${APP_TELEGRAM_POLLING_FIXED_DELAY_MS:-5000}
+      APP_EMAIL_OTP_ENABLED: ${APP_EMAIL_OTP_ENABLED:-false}
+      APP_EMAIL_OTP_FROM: ${APP_EMAIL_OTP_FROM:-}
+      APP_EMAIL_OTP_SUBJECT: "${APP_EMAIL_OTP_SUBJECT:-Код входа в платформу}"
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH:-true}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE:-true}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - uploads_data:/app/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_TURN_URL: ${VITE_TURN_URL:-}
+        VITE_TURN_USER: ${VITE_TURN_USER:-}
+        VITE_TURN_PASS: ${VITE_TURN_PASS:-}
+    container_name: tbg-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: tbg-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-psychology_db}
+      POSTGRES_USER: ${POSTGRES_USER:-psychology_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-psychology_pass}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-psychology_user} -d ${POSTGRES_DB:-psychology_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: tbg-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  coturn:
+    image: coturn/coturn:4.6.2
+    container_name: tbg-coturn
+    restart: unless-stopped
+    ports:
+      - "3478:3478/tcp"
+      - "3478:3478/udp"
+      - "49160-49200:49160-49200/udp"
+    environment:
+      TURN_USER: ${TURN_USER:-turnuser}
+      TURN_PASS: ${TURN_PASS:-turnpass}
+      TURN_REALM: ${TURN_REALM:-localhost}
+      TURN_EXTERNAL_IP: ${TURN_EXTERNAL_IP:-127.0.0.1}
+      TURN_CLI_PASSWORD: ${TURN_CLI_PASSWORD:-turncli}
+    command:
+      - -n
+      - --log-file=stdout
+      - --lt-cred-mech
+      - --user=${TURN_USER:-turnuser}:${TURN_PASS:-turnpass}
+      - --realm=${TURN_REALM:-localhost}
+      - --external-ip=${TURN_EXTERNAL_IP:-127.0.0.1}
+      - --listening-ip=0.0.0.0
+      - --relay-ip=0.0.0.0
+      - --min-port=49160
+      - --max-port=49200
+      - --no-tls
+      - --no-dtls
+      - --cli-password=${TURN_CLI_PASSWORD:-turncli}
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads_data:
