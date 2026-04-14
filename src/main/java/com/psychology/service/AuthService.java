@@ -45,13 +45,15 @@ public class AuthService {
     public record AuthResult(AuthResponse response, String refreshToken) {}
 
     public AuthResult verifyOTPAndAuthenticate(VerifyOtpRequest request) {
+        String loginId = normalizeLoginId(request.getPhone());
+
         // Проверяем OTP
-        if (!otpService.verifyOTP(request.getPhone(), request.getOtp())) {
+        if (!otpService.verifyOTP(loginId, request.getOtp())) {
             throw new RuntimeException("Invalid OTP");
         }
 
         // Ищем пользователя
-        var user = userRepository.findByPhone(request.getPhone())
+        var user = userRepository.findByPhone(loginId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         // ВАЖНО: Проверяем верификацию для психологов
@@ -76,12 +78,12 @@ public class AuthService {
             throw new RuntimeException("Invalid refresh token");
         }
 
-        String phone = jwtTokenProvider.extractUsername(refreshToken);
-        var user = userRepository.findByPhone(phone)
+        String loginId = normalizeLoginId(jwtTokenProvider.extractUsername(refreshToken));
+        var user = userRepository.findByPhone(loginId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         // Проверяем, что этот refresh token еще валиден
-        String storedRefreshToken = stringRedisTemplate.opsForValue().get(REFRESH_PREFIX + phone);
+        String storedRefreshToken = stringRedisTemplate.opsForValue().get(REFRESH_PREFIX + loginId);
         if (!refreshToken.equals(storedRefreshToken)) {
             throw new RuntimeException("Refresh token mismatch");
         }
@@ -99,16 +101,19 @@ public class AuthService {
     }
 
     public AuthResult registerPsychologist(PsychologistRegisterRequest request) {
-        // Проверяем, не занят ли телефон
-        if (userRepository.existsByPhone(request.getPhone())) {
-            throw new RuntimeException("Phone already registered");
+        String loginEmail = normalizeLoginId(request.getPhone());
+        String profileEmail = normalizeLoginId(request.getEmail());
+
+        // Проверяем, не занят ли email
+        if (userRepository.existsByPhone(loginEmail)) {
+            throw new RuntimeException("Email already registered");
         }
 
         // Создаем психолога
         Psychologist psychologist = new Psychologist();
-        psychologist.setPhone(request.getPhone());
+        psychologist.setPhone(loginEmail);
         psychologist.setFullName(request.getFullName());
-        psychologist.setEmail(request.getEmail());
+        psychologist.setEmail(profileEmail);
         psychologist.setOrganizationName(hasText(request.getOrganizationName()) ? request.getOrganizationName() : defaultOrganizationName);
         psychologist.setServiceFormat(request.getServiceFormat());
         psychologist.setEducation(request.getEducation());
@@ -138,18 +143,20 @@ public class AuthService {
             throw new RuntimeException("Invite expired");
         }
 
-        // Проверяем, не занят ли телефон
-        if (userRepository.existsByPhone(request.getPhone())) {
-            throw new RuntimeException("Phone already registered");
+        String loginEmail = normalizeLoginId(request.getPhone());
+
+        // Проверяем, не занят ли email
+        if (userRepository.existsByPhone(loginEmail)) {
+            throw new RuntimeException("Email already registered");
         }
 
         // Создаем клиента
         Client client = new Client();
-        client.setPhone(request.getPhone());
+        client.setPhone(loginEmail);
         client.setFullName(request.getFullName());
         client.setAge(request.getAge());
         client.setCompanyName(hasText(request.getCompanyName()) ? request.getCompanyName() : defaultOrganizationName);
-        client.setWorkEmail(request.getWorkEmail());
+        client.setWorkEmail(hasText(request.getWorkEmail()) ? normalizeLoginId(request.getWorkEmail()) : loginEmail);
         client.setDepartment(request.getDepartment());
         client.setPosition(request.getPosition());
         client.setEmployeeCode(request.getEmployeeCode());
@@ -180,16 +187,16 @@ public class AuthService {
             );
         }
 
-        String phone = null;
+        String loginId = null;
 
         if (refreshToken != null) {
-            phone = jwtTokenProvider.extractUsername(refreshToken);
+            loginId = normalizeLoginId(jwtTokenProvider.extractUsername(refreshToken));
         } else if (accessToken != null && jwtTokenProvider.validateToken(accessToken)) {
-            phone = jwtTokenProvider.extractUsername(accessToken);
+            loginId = normalizeLoginId(jwtTokenProvider.extractUsername(accessToken));
         }
 
-        if (phone != null && !phone.isBlank()) {
-            stringRedisTemplate.delete(REFRESH_PREFIX + phone);
+        if (loginId != null && !loginId.isBlank()) {
+            stringRedisTemplate.delete(REFRESH_PREFIX + loginId);
         }
     }
 
@@ -224,16 +231,18 @@ public class AuthService {
     }
 
     public AuthResult changePhone(User user, String newPhone, String otp) {
-        if (!otpService.verifyOTP(newPhone, otp)) {
+        String newLoginId = normalizeLoginId(newPhone);
+
+        if (!otpService.verifyOTP(newLoginId, otp)) {
             throw new RuntimeException("Invalid OTP");
         }
 
-        if (userRepository.existsByPhone(newPhone)) {
-            throw new RuntimeException("Phone already registered");
+        if (userRepository.existsByPhone(newLoginId)) {
+            throw new RuntimeException("Email already registered");
         }
 
         String oldPhone = user.getPhone();
-        user.setPhone(newPhone);
+        user.setPhone(newLoginId);
         userRepository.save(user);
 
         // Сбрасываем старый refresh token
@@ -253,5 +262,10 @@ public class AuthService {
 
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
+    }
+
+    private String normalizeLoginId(String value) {
+        if (value == null) return "";
+        return value.trim().toLowerCase();
     }
 }

@@ -7,6 +7,7 @@ import lombok.Data;
 @Data
 public class PsychologistRegisterRequest {
     @NotBlank
+    @Email(message = "Invalid email format")
     private String phone;
 
     @NotBlank

@@ -2,22 +2,21 @@ package com.psychology.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 public class AuthDTO {
 
     @Data
     public static class PhoneRequest {
-        @NotBlank(message = "Phone number is required")
-        @Pattern(regexp = "^\\+?[1-9]\\d{1,14}$", message = "Invalid phone number format")
+        @NotBlank(message = "Email is required")
+        @Email(message = "Invalid email format")
         private String phone;
     }
 
     @Data
     public static class VerifyOtpRequest {
         @NotBlank
+        @Email(message = "Invalid email format")
         private String phone;
 
         @NotBlank
@@ -37,6 +36,7 @@ public class AuthDTO {
     @Data
     public static class PsychologistRegisterRequest {
         @NotBlank
+        @Email(message = "Invalid email format")
         private String phone;
 
         @NotBlank
@@ -59,6 +59,7 @@ public class AuthDTO {
     @Data
     public static class ClientRegisterRequest {
         @NotBlank
+        @Email(message = "Invalid email format")
         private String phone;
 
         @NotBlank

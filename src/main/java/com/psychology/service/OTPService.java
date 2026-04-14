@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 public class OTPService {
     private final StringRedisTemplate stringRedisTemplate;
     private final TelegramOtpService telegramOtpService;
+    private final EmailOtpService emailOtpService;
 
     private static final String OTP_PREFIX = "otp:";
     private static final String OTP_ATTEMPTS_PREFIX = "otp_attempts:";
@@ -27,20 +28,22 @@ public class OTPService {
     private static final int SEND_TIMEOUT_SECONDS = 60; // 1 minute
 
     public String generateOTP(String phone) {
+        String loginId = normalizeLoginId(phone);
+
         // Проверка блокировки
-        if (isBlocked(phone)) {
-            throw new RuntimeException("Phone is temporarily blocked");
+        if (isBlocked(loginId)) {
+            throw new RuntimeException("Identifier is temporarily blocked");
         }
 
         // Проверка таймаута отправки
-        String timeoutKey = SEND_TIMEOUT_PREFIX + phone;
+        String timeoutKey = SEND_TIMEOUT_PREFIX + loginId;
         if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(timeoutKey))) {
             throw new RuntimeException("Please wait before requesting new OTP");
         }
 
         // Генерация OTP
         String otp = RandomStringUtils.randomNumeric(OTP_LENGTH);
-        String key = OTP_PREFIX + phone;
+        String key = OTP_PREFIX + loginId;
 
         // Сохранение в Redis
         stringRedisTemplate.opsForValue().set(
@@ -51,7 +54,7 @@ public class OTPService {
         );
 
         // Сохраняем OTP для админки (последний по номеру)
-        String adminKey = "otp_admin:" + phone;
+        String adminKey = "otp_admin:" + loginId;
         stringRedisTemplate.opsForValue().set(
                 adminKey,
                 otp,
@@ -67,18 +70,20 @@ public class OTPService {
                 TimeUnit.SECONDS
         );
 
-        // Отправка OTP в Telegram (если номер привязан к боту)
-        boolean sentToTelegram = telegramOtpService.sendOtpToLinkedChat(phone, otp);
-        if (sentToTelegram) {
-            log.info("OTP sent to Telegram for {}", phone);
+        // Отправка OTP на email
+        boolean sentToEmail = emailOtpService.sendOtpToEmail(loginId, otp);
+        if (sentToEmail) {
+            log.info("OTP sent to email for {}", loginId);
+        } else if (looksLikePhone(loginId) && telegramOtpService.sendOtpToLinkedChat(loginId, otp)) {
+            log.info("OTP sent to Telegram for {}", loginId);
         } else {
             // fallback для локальной отладки
-            log.info("OTP for {}: {}", phone, otp);
+            log.info("OTP for {}: {}", loginId, otp);
         }
 
         // Добавляем в список последних OTP для админки
         String recentKey = "otp_admin_recent";
-        String payload = phone + "|" + otp + "|" + System.currentTimeMillis();
+        String payload = loginId + "|" + otp + "|" + System.currentTimeMillis();
         stringRedisTemplate.opsForList().leftPush(recentKey, payload);
         stringRedisTemplate.opsForList().trim(recentKey, 0, 49); // храним последние 50
 
@@ -86,7 +91,8 @@ public class OTPService {
     }
 
     public boolean verifyOTP(String phone, String otp) {
-        String key = OTP_PREFIX + phone;
+        String loginId = normalizeLoginId(phone);
+        String key = OTP_PREFIX + loginId;
         String storedOtp = stringRedisTemplate.opsForValue().get(key);
 
         if (storedOtp == null) {
@@ -98,9 +104,9 @@ public class OTPService {
         if (verified) {
             // Удаляем OTP после успешной проверки
             stringRedisTemplate.delete(key);
-            resetAttempts(phone);
+            resetAttempts(loginId);
         } else {
-            incrementAttempts(phone);
+            incrementAttempts(loginId);
         }
 
         return verified;
@@ -133,5 +139,16 @@ public class OTPService {
     private void blockPhone(String phone) {
         String key = BLOCKED_PREFIX + phone;
         stringRedisTemplate.opsForValue().set(key, "blocked", BLOCK_DURATION_MINUTES, TimeUnit.MINUTES);
+    }
+
+    private String normalizeLoginId(String value) {
+        if (value == null) return "";
+        return value.trim().toLowerCase();
+    }
+
+    private boolean looksLikePhone(String value) {
+        if (value == null || value.isBlank()) return false;
+        if (value.contains("@")) return false;
+        return value.chars().allMatch(ch -> Character.isDigit(ch) || ch == '+');
     }
 }

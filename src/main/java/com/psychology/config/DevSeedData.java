@@ -30,8 +30,8 @@ public class DevSeedData implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        String psychologistPhone = "+79990000001";
-        String clientPhone = "+79990000002";
+        String psychologistPhone = "psy@example.com";
+        String clientPhone = "m.kuznetsova@telecombg.ru";
 
         if (userRepository.existsByPhone(psychologistPhone) || userRepository.existsByPhone(clientPhone)) {
             log.info("Seed users already exist, skipping demo data.");
@@ -44,7 +44,7 @@ public class DevSeedData implements ApplicationRunner {
         psychologist.setPhone(psychologistPhone);
         psychologist.setRole(UserRole.ROLE_PSYCHOLOGIST);
         psychologist.setFullName("Алексей Романов");
-        psychologist.setEmail("psy@example.com");
+        psychologist.setEmail(psychologistPhone);
         psychologist.setOrganizationName("ООО «Телеком без границ»");
         psychologist.setServiceFormat("Индивидуальные дистанционные консультации");
         psychologist.setEducation("МГУ, клиническая психология");
@@ -59,7 +59,7 @@ public class DevSeedData implements ApplicationRunner {
         client.setRole(UserRole.ROLE_CLIENT);
         client.setFullName("Мария Кузнецова");
         client.setCompanyName("ООО «Телеком без границ»");
-        client.setWorkEmail("m.kuznetsova@telecombg.ru");
+        client.setWorkEmail(clientPhone);
         client.setDepartment("Сервисная поддержка");
         client.setPosition("Ведущий специалист");
         client.setEmployeeCode("TBG-1042");

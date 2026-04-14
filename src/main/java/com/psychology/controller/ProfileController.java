@@ -81,7 +81,7 @@ public class ProfileController {
         return ResponseEntity.ok(new VerificationStatusResponse(true));
     }
 
-    @PostMapping("/phone/send-otp")
+    @PostMapping({"/phone/send-otp", "/email/send-otp"})
     public ResponseEntity<?> sendPhoneOtp(@AuthenticationPrincipal Object user,
                                           @Valid @RequestBody PhoneRequest request) {
         try {
@@ -93,7 +93,7 @@ public class ProfileController {
         }
     }
 
-    @PostMapping("/phone/confirm")
+    @PostMapping({"/phone/confirm", "/email/confirm"})
     public ResponseEntity<?> confirmPhoneChange(@AuthenticationPrincipal Object user,
                                                 @Valid @RequestBody ChangePhoneRequest request,
                                                 jakarta.servlet.http.HttpServletResponse response) {

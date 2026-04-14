@@ -39,6 +39,30 @@ docker run -d --name tbg-care \
 
 Open: `http://localhost:3000`
 
+### Enable Real Email OTP (SMTP)
+
+Recreate container with SMTP variables:
+
+```bash
+docker rm -f tbg-care
+docker run -d --name tbg-care \
+  --restart unless-stopped \
+  -p 3000:80 \
+  -e APP_EMAIL_OTP_ENABLED=true \
+  -e APP_EMAIL_OTP_FROM=your@gmail.com \
+  -e APP_EMAIL_OTP_SUBJECT='Код входа в платформу' \
+  -e SPRING_MAIL_HOST=smtp.gmail.com \
+  -e SPRING_MAIL_PORT=587 \
+  -e SPRING_MAIL_USERNAME=your@gmail.com \
+  -e SPRING_MAIL_PASSWORD='<gmail-app-password>' \
+  -e SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true \
+  -e SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true \
+  -v tbg-care-db:/var/lib/postgresql \
+  -v tbg-care-redis:/data \
+  -v tbg-care-uploads:/app/uploads \
+  rvivalmimi/tbg-care-allinone:latest
+```
+
 Stop:
 
 ```bash
@@ -78,6 +102,13 @@ cp .env.docker.example .env.docker
 ```env
 BACKEND_IMAGE=<dockerhub-username>/tbg-care-backend:latest
 FRONTEND_IMAGE=<dockerhub-username>/tbg-care-frontend:latest
+APP_EMAIL_OTP_ENABLED=true
+APP_EMAIL_OTP_FROM=your@gmail.com
+APP_EMAIL_OTP_SUBJECT=Код входа в платформу
+SPRING_MAIL_HOST=smtp.gmail.com
+SPRING_MAIL_PORT=587
+SPRING_MAIL_USERNAME=your@gmail.com
+SPRING_MAIL_PASSWORD=<gmail-app-password>
 ```
 
 3. Pull and start:
@@ -133,6 +164,15 @@ docker run -d --name tbg-care-backend --restart unless-stopped \
   -e APP_SEED_ENABLED=true \
   -e APP_ORGANIZATION_NAME='ООО «Телеком без границ»' \
   -e APP_PSYCHOLOGISTS_REQUIRE_VERIFICATION=false \
+  -e APP_EMAIL_OTP_ENABLED=true \
+  -e APP_EMAIL_OTP_FROM=your@gmail.com \
+  -e APP_EMAIL_OTP_SUBJECT='Код входа в платформу' \
+  -e SPRING_MAIL_HOST=smtp.gmail.com \
+  -e SPRING_MAIL_PORT=587 \
+  -e SPRING_MAIL_USERNAME=your@gmail.com \
+  -e SPRING_MAIL_PASSWORD='<gmail-app-password>' \
+  -e SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true \
+  -e SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true \
   -v tbg-care-uploads-data:/app/uploads \
   -p 8080:8080 \
   rvivalmimi/tbg-care-backend:latest

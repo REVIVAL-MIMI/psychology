@@ -41,6 +41,10 @@ public class TelegramOtpService {
             return false;
         }
 
+        if (phone != null && phone.contains("@")) {
+            return false;
+        }
+
         String normalizedPhone = normalizePhone(phone);
         if (normalizedPhone == null) {
             log.warn("Unable to normalize phone for Telegram OTP delivery: {}", phone);
