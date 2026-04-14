@@ -1,4 +1,4 @@
-FROM tbg-care-backend:local
+FROM eclipse-temurin:21-jre
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -6,6 +6,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends nginx redis-server postgresql postgresql-contrib \
     && rm -rf /var/lib/apt/lists/*
 
+COPY docker-release/backend/app.jar /app/app.jar
 COPY docker-release/frontend/dist /usr/share/nginx/html
 COPY docker/all-in-one/nginx.conf /etc/nginx/sites-available/default
 COPY docker/all-in-one/entrypoint.sh /usr/local/bin/entrypoint.sh

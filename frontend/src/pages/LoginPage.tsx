@@ -73,10 +73,9 @@ export default function LoginPage() {
               inputMode="tel"
             />
           </label>
-
           {stage === "otp" && (
             <label>
-              Код из SMS
+              Код подтверждения
               <input
                 type="text"
                 placeholder="123456"

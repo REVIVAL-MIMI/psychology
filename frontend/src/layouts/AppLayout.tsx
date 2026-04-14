@@ -3,6 +3,7 @@ import { NavLink, Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
 import { companyProfile, getRoleLabel } from "../lib/branding";
+import BrandLogo from "../components/BrandLogo";
 
 const navForRole = (role: string) => {
   if (role === "ROLE_PSYCHOLOGIST") {
@@ -31,6 +32,7 @@ const navForRole = (role: string) => {
 
 export default function AppLayout() {
   const { auth, logout } = useAuth();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [navBadges, setNavBadges] = useState<{ chat?: number; recommendations?: number; sessions?: number }>({});
   const [latestCounts, setLatestCounts] = useState<{ chat: number; recommendations: number; sessions: number }>({
@@ -61,6 +63,7 @@ export default function AppLayout() {
 
   if (!auth) return null;
   const nav = navForRole(auth.userRole);
+  const navVisible = !(auth.userRole === "ROLE_PSYCHOLOGIST" && auth.verified === false);
 
   useEffect(() => {
     if (auth?.userRole === "ROLE_PSYCHOLOGIST" && auth.verified === false) {
@@ -181,27 +184,28 @@ export default function AppLayout() {
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    setMobileNavOpen(false);
   }, [location.pathname]);
 
   return (
     <div className="app-shell">
       <header className="topbar">
         <Link to="/" className="brand">
-          <span className="brand-mark">TBG</span>
+          <BrandLogo className="brand-mark" />
           <span className="brand-copy">
             <strong>{companyProfile.platformName}</strong>
-            <small>{companyProfile.shortName}</small>
           </span>
         </Link>
 
-        {!(auth.userRole === "ROLE_PSYCHOLOGIST" && auth.verified === false) && (
-          <nav className="topbar-nav">
+        {navVisible && (
+          <nav id="app-topbar-nav" className={`topbar-nav ${mobileNavOpen ? "open" : ""}`}>
             {nav.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.key === "dashboard"}
                 className={({ isActive }) => (isActive ? "nav-pill active" : "nav-pill")}
+                onClick={() => setMobileNavOpen(false)}
               >
                 <span>{item.label}</span>
                 {item.key === "chat" && (navBadges.chat ?? 0) > 0 && <span className="nav-dot" />}
@@ -213,7 +217,19 @@ export default function AppLayout() {
         )}
 
         <div className="topbar-actions">
-          {!(auth.userRole === "ROLE_PSYCHOLOGIST" && auth.verified === false) && (
+          {navVisible && (
+            <button
+              type="button"
+              className="mobile-menu-toggle"
+              aria-label="Открыть меню"
+              aria-expanded={mobileNavOpen}
+              aria-controls="app-topbar-nav"
+              onClick={() => setMobileNavOpen((prev) => !prev)}
+            >
+              <span className="mobile-menu-icon" aria-hidden="true" />
+            </button>
+          )}
+          {navVisible && (
             <>
               <Link to="/app/notifications" className="icon-button" aria-label="Уведомления">
                 <span className="icon-bell" aria-hidden="true" />

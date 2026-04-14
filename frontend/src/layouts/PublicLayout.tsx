@@ -1,6 +1,7 @@
 import { Link, Outlet } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { companyProfile } from "../lib/branding";
+import BrandLogo from "../components/BrandLogo";
 
 export default function PublicLayout() {
   const { isAuthenticated } = useAuth();
@@ -9,10 +10,9 @@ export default function PublicLayout() {
     <div className="public-layout">
       <header className="public-header">
         <Link to="/" className="brand">
-          <span className="brand-mark">TBG</span>
+          <BrandLogo className="brand-mark" />
           <span className="brand-copy">
             <strong>{companyProfile.platformName}</strong>
-            <small>{companyProfile.shortName}</small>
           </span>
         </Link>
         <nav className="public-nav">

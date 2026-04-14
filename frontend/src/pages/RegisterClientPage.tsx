@@ -136,7 +136,7 @@ export default function RegisterClientPage() {
             </button>
           </div>
           <label>
-            Код из SMS
+            Код подтверждения
             <input value={form.otp} onChange={update("otp")} placeholder="123456" />
           </label>
           <label>

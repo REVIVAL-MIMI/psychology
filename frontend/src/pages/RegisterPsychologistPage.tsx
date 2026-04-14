@@ -84,11 +84,10 @@ export default function RegisterPsychologistPage() {
               inputMode="tel"
             />
           </label>
-
           {stage === "profile" && (
             <>
               <label>
-                Код из SMS
+                Код подтверждения
                 <input value={form.otp} onChange={update("otp")} placeholder="123456" />
               </label>
               <label>

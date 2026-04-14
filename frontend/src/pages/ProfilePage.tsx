@@ -173,7 +173,7 @@ export default function ProfilePage() {
             />
           </label>
           <label>
-            Код из SMS
+            Код подтверждения
             <input
               value={phoneForm.otp}
               onChange={(e) => setPhoneForm((prev) => ({ ...prev, otp: e.target.value }))}

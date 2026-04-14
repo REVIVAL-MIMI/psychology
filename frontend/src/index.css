@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&family=Unbounded:wght@500;600;700&display=swap");
 
 :root {
   color-scheme: light;
@@ -226,33 +226,29 @@ label {
 }
 
 .brand-mark {
-  display: grid;
-  place-items: center;
   width: 38px;
   height: 38px;
+  flex: 0 0 38px;
+  display: block;
   border-radius: 12px;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 86%, white 14%), #1b7da1);
-  color: var(--accent-ink);
-  font-weight: 700;
-  font-size: 11px;
-  letter-spacing: 0.14em;
+  box-shadow: 0 8px 18px rgba(14, 92, 122, 0.2);
 }
 
 .brand-copy {
-  display: grid;
-  gap: 1px;
+  display: flex;
+  align-items: center;
+  min-width: 0;
 }
 
 .brand-copy strong {
-  font-size: 17px;
-  line-height: 1.05;
-}
-
-.brand-copy small {
-  font-size: 11px;
-  letter-spacing: 0.12em;
+  font-family: "Unbounded", "Manrope", "IBM Plex Sans", sans-serif;
+  font-size: clamp(12px, 1.35vw, 16px);
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--muted);
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--text) 92%, #0f8f7a);
 }
 
 .nav-link-inline {
@@ -883,7 +879,7 @@ label {
 
 .topbar {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 16px;
   min-height: var(--topbar-height);
@@ -894,6 +890,25 @@ label {
   position: sticky;
   top: 0;
   z-index: 20;
+}
+
+.topbar .brand {
+  min-width: 0;
+  width: auto;
+  max-width: 100%;
+}
+
+.topbar .brand-copy {
+  min-width: 0;
+  width: auto;
+}
+
+.topbar .brand-copy strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(10px, 0.9vw, 13px);
 }
 
 .topbar::before,
@@ -924,8 +939,15 @@ label {
   display: flex;
   align-items: center;
   gap: 8px;
-  justify-content: center;
-  flex-wrap: wrap;
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+  width: max-content;
+  max-width: 100%;
+  justify-self: center;
+  grid-column: 2;
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 6px 10px;
   border-radius: 999px;
   background: linear-gradient(135deg, rgba(244, 251, 250, 0.94), rgba(231, 244, 242, 0.96));
@@ -933,13 +955,51 @@ label {
   box-shadow: var(--shadow-soft);
 }
 
+.topbar-nav .nav-pill {
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
 
 .topbar-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 6px;
+  flex-wrap: nowrap;
   justify-content: flex-end;
+  white-space: nowrap;
+  min-width: 0;
+  grid-column: 3;
+}
+
+.mobile-menu-toggle {
+  display: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+  color: var(--text);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.mobile-menu-toggle:hover {
+  background: var(--surface-strong);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-soft);
+}
+
+.mobile-menu-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+  background: currentColor;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black'><path d='M4 7h16v2H4V7zm0 4h16v2H4v-2zm0 4h16v2H4v-2z'/></svg>");
 }
 
 .icon-button {
@@ -1043,16 +1103,28 @@ label {
   text-decoration: none;
   color: inherit;
   transition: transform 0.18s ease, box-shadow 0.2s ease, background 0.2s ease;
+  max-width: 220px;
+  min-width: 0;
+}
+
+.user-chip > div {
+  min-width: 0;
 }
 
 .user-chip-name {
   font-size: 13px;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .user-chip-sub {
   font-size: 11px;
   color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .user-chip-link:hover {
@@ -1080,7 +1152,7 @@ label {
 }
 
 .nav-pill {
-  padding: 8px 12px;
+  padding: 7px 10px;
   border-radius: 12px;
   border: 1px solid transparent;
   color: var(--text);
@@ -1089,7 +1161,7 @@ label {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font-size: 14px;
+  font-size: 13px;
   transition: all 0.18s ease;
 }
 
@@ -1614,6 +1686,14 @@ label {
 }
 
 @media (max-width: 1024px) {
+  .topbar .brand-copy {
+    display: none;
+  }
+
+  .topbar .brand {
+    gap: 0;
+  }
+
   .hero {
     grid-template-columns: 1fr;
   }
@@ -1624,6 +1704,64 @@ label {
 }
 
 @media (max-width: 900px) {
+  .topbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .topbar .brand {
+    grid-column: 1;
+    width: auto;
+    max-width: 100%;
+  }
+
+  .topbar-actions {
+    grid-column: 2;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .mobile-menu-toggle {
+    display: inline-flex;
+  }
+
+  .topbar-nav {
+    grid-column: 1 / -1;
+    width: 100%;
+    max-width: 100%;
+    justify-self: stretch;
+    border-radius: 16px;
+    padding: 10px;
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    overflow: hidden;
+  }
+
+  .topbar-nav.open {
+    display: flex;
+  }
+
+  .topbar-nav .nav-pill {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  .topbar-actions .button {
+    padding: 9px 12px;
+  }
+
+  .user-chip {
+    max-width: 170px;
+  }
+
+  .user-chip-sub {
+    display: none;
+  }
+
   .grid-2 {
     grid-template-columns: 1fr;
   }
@@ -1670,31 +1808,6 @@ label {
     grid-template-columns: 1fr;
   }
 
-  .topbar {
-    grid-template-columns: 1fr;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .topbar-actions {
-    width: 100%;
-    justify-content: flex-start;
-  }
-
-  .topbar-nav {
-    width: 100%;
-    justify-content: flex-start;
-    overflow-x: auto;
-    padding: 8px 12px;
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .topbar-nav .nav-pill {
-    scroll-snap-align: start;
-    white-space: nowrap;
-  }
-
   .app-content {
     padding: 20px;
   }
@@ -1735,7 +1848,8 @@ label {
   }
 
   .user-chip {
-    width: 100%;
+    width: auto;
+    max-width: 140px;
   }
 
   .auth-card,

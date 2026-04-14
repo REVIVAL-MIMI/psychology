@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class OTPService {
     private final StringRedisTemplate stringRedisTemplate;
+    private final TelegramOtpService telegramOtpService;
 
     private static final String OTP_PREFIX = "otp:";
     private static final String OTP_ATTEMPTS_PREFIX = "otp_attempts:";
@@ -66,8 +67,14 @@ public class OTPService {
                 TimeUnit.SECONDS
         );
 
-        // Логирование OTP (в продакшене будет отправка SMS)
-        log.info("OTP for {}: {}", phone, otp);
+        // Отправка OTP в Telegram (если номер привязан к боту)
+        boolean sentToTelegram = telegramOtpService.sendOtpToLinkedChat(phone, otp);
+        if (sentToTelegram) {
+            log.info("OTP sent to Telegram for {}", phone);
+        } else {
+            // fallback для локальной отладки
+            log.info("OTP for {}: {}", phone, otp);
+        }
 
         // Добавляем в список последних OTP для админки
         String recentKey = "otp_admin_recent";

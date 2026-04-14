@@ -10,8 +10,9 @@ USERNAME="$1"
 TAG="${2:-latest}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-LOCAL_IMAGE="tbg-care-allinone:local"
 REMOTE_IMAGE="${USERNAME}/tbg-care-allinone:${TAG}"
+PLATFORMS="${PLATFORMS:-linux/amd64,linux/arm64}"
+BUILDER_NAME="${BUILDER_NAME:-tbg-multi}"
 
 cd "$ROOT_DIR"
 
@@ -31,17 +32,26 @@ rm -rf docker-release/frontend/dist
 cp -R frontend/dist docker-release/frontend/dist
 cp frontend/nginx.conf docker-release/frontend/nginx.conf
 
-echo "[4/7] Rebuilding base backend image for fresh app.jar..."
-docker build -f Dockerfile.release-backend -t tbg-care-backend:local .
+echo "[4/7] Ensuring buildx builder..."
+if ! docker buildx inspect "$BUILDER_NAME" >/dev/null 2>&1; then
+  docker buildx create --name "$BUILDER_NAME" --driver docker-container --use
+else
+  docker buildx use "$BUILDER_NAME"
+fi
+docker buildx inspect --bootstrap >/dev/null
 
-echo "[5/7] Building all-in-one image..."
-docker build -f Dockerfile.all-in-one -t "$LOCAL_IMAGE" .
+echo "[5/7] Building and pushing multi-platform image ($PLATFORMS)..."
+docker buildx build \
+  --platform "$PLATFORMS" \
+  -f Dockerfile.all-in-one \
+  -t "$REMOTE_IMAGE" \
+  --push \
+  .
 
-echo "[6/7] Tagging..."
-docker tag "$LOCAL_IMAGE" "$REMOTE_IMAGE"
+echo "[6/7] Inspecting manifest..."
+docker buildx imagetools inspect "$REMOTE_IMAGE"
 
-echo "[7/7] Pushing..."
-docker push "$REMOTE_IMAGE"
+echo "[7/7] Done."
 
 cat <<EOF
 Published:

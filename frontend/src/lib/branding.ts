@@ -2,8 +2,8 @@ import type { UserRole } from "./storage";
 
 export const companyProfile = {
   companyName: "ООО «Телеком без границ»",
-  shortName: "Телеком без границ",
-  platformName: "TBG Care",
+  shortName: "ТЕЛЕКОМ БЕЗ ГРАНИЦ",
+  platformName: "ТЕЛЕКОМ БЕЗ ГРАНИЦ",
   platformSubtitle: "Онлайн-платформа психологической поддержки",
   publicSite: "https://telecombg.ru/"
 } as const;
