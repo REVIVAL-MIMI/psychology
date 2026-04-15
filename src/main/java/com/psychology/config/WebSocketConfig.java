@@ -36,6 +36,20 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final StringRedisTemplate stringRedisTemplate;
 
     private static final String BLACKLIST_PREFIX = "blacklist:";
+    private static final String[] ALLOWED_WS_ORIGIN_PATTERNS = {
+            "http://localhost:*",
+            "https://localhost:*",
+            "http://127.0.0.1:*",
+            "https://127.0.0.1:*",
+            "http://188.225.45.82:*",
+            "https://188.225.45.82:*",
+            "http://81.19.135.231:*",
+            "https://81.19.135.231:*",
+            "http://24tbgpsychology.ru",
+            "https://24tbgpsychology.ru",
+            "http://www.24tbgpsychology.ru",
+            "https://www.24tbgpsychology.ru"
+    };
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
@@ -47,29 +61,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws-chat")
-                .setAllowedOriginPatterns(
-                        "http://localhost:3000",
-                        "http://localhost:8080",
-                        "http://localhost:5173",
-                        "http://127.0.0.1:5173",
-                        "http://188.225.45.82:3000",
-                        "http://188.225.45.82",
-                        "https://188.225.45.82",
-                        "https://188.225.45.82:443"
-                )
+                .setAllowedOriginPatterns(ALLOWED_WS_ORIGIN_PATTERNS)
                 .withSockJS();
 
         registry.addEndpoint("/ws-chat")
-                .setAllowedOriginPatterns(
-                        "http://localhost:3000",
-                        "http://localhost:8080",
-                        "http://localhost:5173",
-                        "http://127.0.0.1:5173",
-                        "http://188.225.45.82:3000",
-                        "http://188.225.45.82",
-                        "https://188.225.45.82",
-                        "https://188.225.45.82:443"
-                );
+                .setAllowedOriginPatterns(ALLOWED_WS_ORIGIN_PATTERNS);
     }
 
     @Override
