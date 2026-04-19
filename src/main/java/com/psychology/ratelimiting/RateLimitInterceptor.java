@@ -41,23 +41,29 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             return true; // Для других путей не применяем rate limiting
         }
 
-        // Проверяем количество запросов
-        Long current = redisTemplate.opsForValue().increment(key);
-        if (current == null) {
-            // Ошибка Redis, пропускаем
+        try {
+            // Проверяем количество запросов
+            Long current = redisTemplate.opsForValue().increment(key);
+            if (current == null) {
+                // Ошибка Redis, пропускаем
+                return true;
+            }
+
+            if (current == 1) {
+                // Первый запрос, устанавливаем TTL
+                redisTemplate.expire(key, WINDOW.getSeconds(), TimeUnit.SECONDS);
+            }
+
+            if (current > limit) {
+                log.warn("Rate limit exceeded for IP: {}, path: {}", ip, path);
+                response.setStatus(429); // Too Many Requests
+                response.getWriter().write("Rate limit exceeded. Please try again later.");
+                return false;
+            }
+        } catch (Exception e) {
+            // Fail-open: если Redis временно недоступен, не блокируем авторизацию/OTP.
+            log.warn("Rate limiter skipped due to Redis error for IP: {}, path: {}: {}", ip, path, e.getMessage());
             return true;
-        }
-
-        if (current == 1) {
-            // Первый запрос, устанавливаем TTL
-            redisTemplate.expire(key, WINDOW.getSeconds(), TimeUnit.SECONDS);
-        }
-
-        if (current > limit) {
-            log.warn("Rate limit exceeded for IP: {}, path: {}", ip, path);
-            response.setStatus(429); // Too Many Requests
-            response.getWriter().write("Rate limit exceeded. Please try again later.");
-            return false;
         }
 
         return true;

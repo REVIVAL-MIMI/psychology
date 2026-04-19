@@ -20,7 +20,8 @@ public abstract class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false)
+    // Legacy field name in code; persisted as "email" in DB.
+    @Column(name = "email", unique = true)
     private String phone;
 
     @Enumerated(EnumType.STRING)

@@ -1,5 +1,6 @@
 package com.psychology.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
@@ -8,6 +9,7 @@ public class AuthDTO {
 
     @Data
     public static class PhoneRequest {
+        @JsonAlias({"email", "phone"})
         @NotBlank(message = "Email is required")
         @Email(message = "Invalid email format")
         private String phone;
@@ -15,6 +17,7 @@ public class AuthDTO {
 
     @Data
     public static class VerifyOtpRequest {
+        @JsonAlias({"email", "phone"})
         @NotBlank
         @Email(message = "Invalid email format")
         private String phone;
@@ -35,6 +38,7 @@ public class AuthDTO {
 
     @Data
     public static class PsychologistRegisterRequest {
+        @JsonAlias({"email", "phone"})
         @NotBlank
         @Email(message = "Invalid email format")
         private String phone;
@@ -58,6 +62,7 @@ public class AuthDTO {
 
     @Data
     public static class ClientRegisterRequest {
+        @JsonAlias({"email", "phone"})
         @NotBlank
         @Email(message = "Invalid email format")
         private String phone;
