@@ -2,6 +2,8 @@ services:
   backend:
     build: .
     container_name: psychology-backend
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       JAVA_OPTS: ${JAVA_OPTS:-}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/psychology_db
@@ -9,7 +11,9 @@ services:
       SPRING_DATASOURCE_PASSWORD: psychology_pass
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_REPOSITORIES_ENABLED: ${SPRING_DATA_REDIS_REPOSITORIES_ENABLED:-false}
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: ${SPRING_JPA_SHOW_SQL:-false}
       APP_SEED_ENABLED: "true"
       APP_TELEGRAM_ENABLED: ${APP_TELEGRAM_ENABLED:-false}
       APP_TELEGRAM_BOT_TOKEN: ${APP_TELEGRAM_BOT_TOKEN:-}
@@ -30,6 +34,13 @@ services:
       SPRING_MAIL_PROPERTIES_MAIL_SMTP_CONNECTIONTIMEOUT: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_CONNECTIONTIMEOUT:-10000}
       SPRING_MAIL_PROPERTIES_MAIL_SMTP_TIMEOUT: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_TIMEOUT:-10000}
       SPRING_MAIL_PROPERTIES_MAIL_SMTP_WRITETIMEOUT: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_WRITETIMEOUT:-10000}
+      APP_EMAIL_OTP_FALLBACK_HOST: ${APP_EMAIL_OTP_FALLBACK_HOST:-}
+      APP_EMAIL_OTP_FALLBACK_PORT: ${APP_EMAIL_OTP_FALLBACK_PORT:-0}
+      APP_EMAIL_OTP_FALLBACK_AUTH: ${APP_EMAIL_OTP_FALLBACK_AUTH:-true}
+      APP_EMAIL_OTP_FALLBACK_STARTTLS_ENABLE: ${APP_EMAIL_OTP_FALLBACK_STARTTLS_ENABLE:-false}
+      APP_EMAIL_OTP_FALLBACK_STARTTLS_REQUIRED: ${APP_EMAIL_OTP_FALLBACK_STARTTLS_REQUIRED:-false}
+      APP_EMAIL_OTP_FALLBACK_SSL_ENABLE: ${APP_EMAIL_OTP_FALLBACK_SSL_ENABLE:-false}
+      APP_EMAIL_OTP_FALLBACK_SSL_TRUST: ${APP_EMAIL_OTP_FALLBACK_SSL_TRUST:-}
     ports:
       - "8080:8080"
     depends_on:
@@ -44,9 +55,9 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_TURN_URL: ${VITE_TURN_URL}
-        VITE_TURN_USER: ${VITE_TURN_USER}
-        VITE_TURN_PASS: ${VITE_TURN_PASS}
+        VITE_TURN_URL: ${VITE_TURN_URL:-}
+        VITE_TURN_USER: ${VITE_TURN_USER:-}
+        VITE_TURN_PASS: ${VITE_TURN_PASS:-}
     container_name: psychology-frontend
     ports:
       - "3000:80"
@@ -102,9 +113,9 @@ services:
       - -n
       - --log-file=stdout
       - --lt-cred-mech
-      - --user=${TURN_USER}:${TURN_PASS}
-      - --realm=${TURN_REALM}
-      - --external-ip=${TURN_EXTERNAL_IP}
+      - --user=${TURN_USER:-turnuser}:${TURN_PASS:-turnpass}
+      - --realm=${TURN_REALM:-188.225.45.82}
+      - --external-ip=${TURN_EXTERNAL_IP:-188.225.45.82}
       - --listening-ip=0.0.0.0
       - --relay-ip=0.0.0.0
       - --min-port=49160

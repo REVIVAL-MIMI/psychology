@@ -73,12 +73,14 @@ public class OTPService {
         // Отправка OTP на email
         boolean sentToEmail = emailOtpService.sendOtpToEmail(loginId, otp);
         if (sentToEmail) {
-            log.info("OTP sent to email for {}", loginId);
+            log.info("OTP sent to email for {}", maskLoginId(loginId));
         } else if (looksLikePhone(loginId) && telegramOtpService.sendOtpToLinkedChat(loginId, otp)) {
-            log.info("OTP sent to Telegram for {}", loginId);
+            log.info("OTP sent to Telegram for {}", maskLoginId(loginId));
         } else {
+            log.warn("OTP delivery failed for {}. No external channel available, using debug fallback log.",
+                    maskLoginId(loginId));
             // fallback для локальной отладки
-            log.info("OTP for {}: {}", loginId, otp);
+            log.info("OTP DEBUG for {}: {}", maskLoginId(loginId), otp);
         }
 
         // Добавляем в список последних OTP для админки
@@ -150,5 +152,18 @@ public class OTPService {
         if (value == null || value.isBlank()) return false;
         if (value.contains("@")) return false;
         return value.chars().allMatch(ch -> Character.isDigit(ch) || ch == '+');
+    }
+
+    private String maskLoginId(String value) {
+        if (value == null || value.isBlank()) return "***";
+        if (value.contains("@")) {
+            int at = value.indexOf('@');
+            if (at <= 1) return "***";
+            String user = value.substring(0, at);
+            String domain = value.substring(at + 1);
+            return user.charAt(0) + "***@" + domain;
+        }
+        if (value.length() <= 4) return "***";
+        return value.substring(0, 2) + "***" + value.substring(value.length() - 2);
     }
 }
