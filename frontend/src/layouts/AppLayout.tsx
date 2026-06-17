@@ -8,7 +8,7 @@ import BrandLogo from "../components/BrandLogo";
 const navForRole = (role: string) => {
   if (role === "ROLE_PSYCHOLOGIST") {
     return [
-      { to: "/app", label: "Дашборд", key: "dashboard" },
+      { to: "/app", label: "Главная", key: "dashboard" },
       { to: "/app/clients", label: "Сотрудники", key: "clients" },
       { to: "/app/sessions", label: "График и консультации", key: "sessions" },
       { to: "/app/recommendations", label: "Рекомендации", key: "recommendations" },
@@ -22,7 +22,7 @@ const navForRole = (role: string) => {
     ];
   }
   return [
-    { to: "/app", label: "Дашборд", key: "dashboard" },
+    { to: "/app", label: "Главная", key: "dashboard" },
     { to: "/app/sessions", label: "Запись и консультации", key: "sessions" },
     { to: "/app/journal", label: "Журнал", key: "journal" },
     { to: "/app/recommendations", label: "Рекомендации", key: "recommendations" },

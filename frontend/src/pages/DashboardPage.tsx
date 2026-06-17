@@ -22,7 +22,7 @@ export default function DashboardPage() {
     api
       .get(endpoint)
       .then(setData)
-      .catch(() => setError("Не удалось загрузить дашборд"));
+      .catch(() => setError("Не удалось загрузить главный экран"));
 
     if (auth.userRole === "ROLE_PSYCHOLOGIST") {
       api.get("/dashboard/psychologist/stats").then(setStats).catch(() => null);
@@ -43,7 +43,7 @@ export default function DashboardPage() {
   return (
     <div className="page">
       <div className="page-header">
-        <h1>Дашборд</h1>
+        <h1>Главная</h1>
         <p className="muted">Ключевые события и ближайшие консультации.</p>
       </div>
 
